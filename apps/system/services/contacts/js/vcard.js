@@ -141,7 +141,6 @@ Property.prototype = {
     return this.param('TYPE', value);
   },
 
-
   pref: function(bool) {
     if (bool) {
       this.param('PREF', '1');
@@ -230,7 +229,7 @@ MozContactTranslator.prototype = {
         }
         return property.toString();
       }
-    }).filter(function(value) {
+    }, this).filter(function(value) {
       return (!!value);
     }).join(CRLF);
 
