@@ -2,12 +2,12 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-'use strict';
-
-const CRLF = '\r\n';
+var CRLF = '\r\n';
+var DEFAULT_LINE_LENGTH = 78;
+var PRODID = '-//Mozilla.org//NONSGML Mozilla Contacts v0.0//EN';
 
 /*
- * A logical line MAY be continued on the next physical line anywhere
+ * A property MAY be continued on the next physical line anywhere
  * between two characters by inserting a CRLF immediately followed by a
  * single white space character (space, ASCII decimal 32, or horizontal
  * tab, ASCII decimal 9).  At least one character must be present on the
@@ -23,9 +23,13 @@ const CRLF = '\r\n';
  * o  Lines of characters in the body MUST be limited to 998 characters,
  *    and SHOULD be limited to 78 characters, excluding the CRLF.
  */
-function fold(line, maxLength=78) {
+function fold(line, maxLength) {
+  'use strict';
+
+  maxLength = maxLength || DEFAULT_LINE_LENGTH;
   if (maxLength < 20) {
-    throw new Error('maxLength should be over 20.  Suggested value is 78');
+    throw new Error('maxLength should be over 20.  Suggested value is ' +
+        DEFAULT_LINE_LENGTH);
   }
 
   // simple and ugly for now
@@ -67,24 +71,31 @@ function fold(line, maxLength=78) {
 }
 
 function unfold(str) {
+  'use strict';
+
   // Prefix may be a single space or tab character
   var re = /(\r\n\s)/gm;
   return str.replace(re, '');
 }
 
-function esc(str='') {
-  var re = /([,])/gm;
+function esc(str) {
+  'use strict';
+
+  str = str || '';
+  var re = /([,;\r\n])/gm;
   return str.replace(re, '\\$1');
 }
 
 // Utility class for composing a line
-function Line(name='') {
-  this.name = name;
+function Property(name) {
+  'use strict';
+
+  this.name = name || '';
   this.params = [];
   this.value = '';
   return this;
 }
-Line.prototype = {
+Property.prototype = {
   toString: function() {
     if (!this.value) {
       return null;
@@ -102,30 +113,34 @@ Line.prototype = {
     return this;
   },
 
-  param: function(name, value) {
-    if (value) {
-      this.params.push(name + '=' + value);
+  // value can be string or list.  For example, mozContact.adr.type is
+  // string, but type of email and others is list.
+  param: function(name, value, escaped) {
+    value = value || [];
+    escaped = escaped || false;
+    if (typeof value == 'string' && value !== '') {
+      this.params.push(name + '=' + (escaped ? value : esc(value)));
     }
-    return this;
-  },
 
-  type: function(value=[]) {
-    // value can be string or list.  For example, mozContact.adr.type is
-    // string, but type of email and others is list.
-
-    // XXX do we need to add quotes around type values when there is more than
-    // one value, as Perreault does in his example vcard?  I don't see this in
-    // the spec anywhere...
-    if (typeof value == 'string') {
-      this.param('TYPE', value);
-    } else {
-      this.param('TYPE',
+    // Note: Perreault, in his example vcard, has quotes around value lists
+    // that contain more than one value.  As Evert Pot has pointed out to me,
+    // we don't want to do this; it was specified in the errata and considered
+    // a Really Bad Idea.
+    else if (typeof value == 'object' && value.length > 0) {
+      var valueStr = (
         (value.length > 1) ?
-        '\"' + value.join(',') + '\"' :
-        value[0]);
+        value.map(esc).join(',') :
+        esc(value[0]));
+      return this.param(name, valueStr, true);
     }
     return this;
   },
+
+  type: function(value) {
+    value = value || [];
+    return this.param('TYPE', value);
+  },
+
 
   pref: function(bool) {
     if (bool) {
@@ -173,6 +188,8 @@ Line.prototype = {
 };
 
 var MozContactTranslator = function MozContactTranslator(mozContactInstance) {
+  'use strict';
+
   this.mozContact = mozContactInstance;
 
   this.fields = [
@@ -235,7 +252,7 @@ MozContactTranslator.prototype = {
     // XXX A valid vcard must have both REV and FN - should we throw if there's
     // no FN?
     var name = this.mozContact.name || [];
-    return new Line('FN').textList(name);
+    return new Property('FN').textList(name);
   },
 
   get N() {
@@ -256,7 +273,7 @@ MozContactTranslator.prototype = {
       return null;
     }
 
-    return new Line('N').listComponents([
+    return new Property('N').listComponents([
                this.mozContact.familyName,
                this.mozContact.givenName,
                this.mozContact.additionalName,
@@ -268,7 +285,7 @@ MozContactTranslator.prototype = {
   get NICKNAME() {
     // mozContact nickname is an array of string
     var nickname = this.mozContact.nickname || [];
-    return new Line('NICKNAME').textList(nickname);
+    return new Property('NICKNAME').textList(nickname);
   },
 
   get PHOTO() {
@@ -286,7 +303,7 @@ MozContactTranslator.prototype = {
       var photo = this.mozContact.photo || [];
       return photo.map(
           function(x) {
-            return new Line('PHOTO').val(x);
+            return new Property('PHOTO').val(x);
           });
     }
     return null;
@@ -302,11 +319,17 @@ MozContactTranslator.prototype = {
     }
     // Contacts find() returns an ISO date string, but the MDN docs say we will
     // get a Date object.  Be ready to accept either.
-    var maybeDate = this.mozContact.bday;
-    return new Line('BDAY')
-      .val((typeof maybeDate == 'string') ?
-            maybeDate :
-            new Date(+maybeDate).toISOString());
+    var date = this.mozContact.bday;
+    if (typeof date == 'number') {
+      date = new Date(+date);
+    }
+    if (typeof date == 'object') {
+      date = [date.getUTCFullYear(),
+              ('0' + (date.getUTCMonth() + 1)).slice(-2), // pad with 0
+              ('0' + (date.getUTCDate())).slice(-2),
+              ].join('-');
+    }
+    return new Property('BDAY').val(date);
   },
 
   // mozContact.anniversary: A Date object representing the anniversary date of
@@ -320,7 +343,7 @@ MozContactTranslator.prototype = {
     // Contacts find() returns an ISO date string, but the MDN docs say we will
     // get a Date object.  Be ready to accept either.
     var maybeDate = this.mozContact.anniversary;
-    return new Line('ANNIVERSARY')
+    return new Property('ANNIVERSARY')
       .val((typeof maybeDate == 'string') ?
             maybeDate :
             new Date(+maybeDate).toISOString());
@@ -341,7 +364,7 @@ MozContactTranslator.prototype = {
     if (!(c.sex || c.genderIdentity)) {
       return null;
     }
-    return new Line('GENDER').listComponents([
+    return new Property('GENDER').listComponents([
         c.sex || '',
         c.genderIdentity || '',
       ]);
@@ -362,7 +385,7 @@ MozContactTranslator.prototype = {
     var adr = this.mozContact.adr || [];
     return adr.map(
         function(x) {
-          return new Line('ADR')
+          return new Property('ADR')
             .type(x.type)
             .pref(x.pref)
             .listComponents([
@@ -384,7 +407,7 @@ MozContactTranslator.prototype = {
     var tel = this.mozContact.tel || [];
     return tel.map(
         function(x) {
-          return new Line('TEL')
+          return new Property('TEL')
             .type(x.type)
             .pref(x.pref)
             .param('CARRIER', x.carrier)
@@ -398,7 +421,7 @@ MozContactTranslator.prototype = {
     var email = this.mozContact.email || [];
     return email.map(
         function (x) {
-          return new Line('EMAIL')
+          return new Property('EMAIL')
             .type(x.type)
             .pref(x.pref)
             .val(x.value);
@@ -411,7 +434,7 @@ MozContactTranslator.prototype = {
     var impp = this.mozContact.impp || [];
     return impp.map(
         function(x) {
-          return new Line('IMPP')
+          return new Property('IMPP')
             .type(x.type)
             .pref(x.pref)
             .val(x.value);
@@ -428,7 +451,7 @@ MozContactTranslator.prototype = {
     var jobTitle = this.mozContact.jobTitle || [];
     return jobTitle.map(
       function(x) {
-        return new Line('TITLE').val(x);
+        return new Property('TITLE').val(x);
       }
     );
   },
@@ -441,7 +464,7 @@ MozContactTranslator.prototype = {
     var org = this.mozContact.org || [];
     return org.map(
       function(x) {
-        return new Line('ORG').val(x);
+        return new Property('ORG').val(x);
       }
     );
   },
@@ -455,12 +478,14 @@ MozContactTranslator.prototype = {
     var note = this.mozContact.note || [];
     return note.map(
       function(x) {
-        return new Line('NOTE').val(x);
+        return new Property('NOTE').val(x);
       }
     );
   },
 
-  // XXX PROID? what to do?
+  get PRODID() {
+    return new Property('PRODID').val(PRODID);
+  },
 
   // mozContact.updated (read-only): A Date object giving the last time the
   // contact was updated. This will eventually be converted to a long long
@@ -473,13 +498,13 @@ MozContactTranslator.prototype = {
     // Contacts find() returns an ISO date string, but the MDN docs say we will
     // get a Date object.  Be ready to accept either.
     var maybeDate = this.mozContact.updated;
-    return new Line('REV')
+    return new Property('REV')
       .val((typeof maybeDate == 'string') ?
             maybeDate :
             new Date(+maybeDate).toISOString());
   },
 
-  // SOUND? Are you kidding me?
+  // XXX to-do: SOUND
 
   // The unique id of the contact in the device's contact database.
   get UID() {
@@ -487,8 +512,8 @@ MozContactTranslator.prototype = {
     if (!this.mozContact.id) {
       return null;
     }
-    // XXX what's the urn:uuid: buisniess? can we do that in Line() ?
-    return new Line('UID').val(this.mozContact.id);
+    // XXX what's the urn:uuid: buisniess? can we do that in Property() ?
+    return new Property('UID').val(this.mozContact.id);
   },
 
   // no CLIENTPIDMAP mapping in mozContacts
@@ -500,7 +525,7 @@ MozContactTranslator.prototype = {
     var url = this.mozContact.url || [];
     return url.map(
         function(x) {
-          return new Line('URL')
+          return new Property('URL')
             .type(x.type)
             .pref(x.pref)
             .val(x.value);
@@ -518,7 +543,7 @@ MozContactTranslator.prototype = {
     var key = this.mozContact.key || [];
     return key.map(
         function(x) {
-          return new Line('KEY').val(x);
+          return new Property('KEY').val(x);
         });
   },
 
@@ -527,7 +552,8 @@ MozContactTranslator.prototype = {
   // searches.
   get CATEGORIES() {
     var categories = this.mozContact.categories || [];
-    return new Line('CATEGORIES').textList(categories);
+    return new Property('CATEGORIES').textList(categories);
   },
 };
+
 
