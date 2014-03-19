@@ -4,25 +4,23 @@
 
 'use strict';
 
+// Find a single contact by id - returns promise
 function findContactById(contactID) {
   var options = {
     filterBy: ['id'],
     filterOp: 'equals',
     filterValue: contactID
   };
+
   var promise = new Promise(function done(resolve, reject) {
     var request = navigator.mozContacts.find(options);
 
     request.onsuccess = function(event) {
       var result = event.target.result[0];
-      console.log('** found: ' + JSON.stringify(result));
       resolve(result);
     };
 
-    request.onerror = function(error) {
-      console.error('** got error: ' + error);
-      reject(error);
-    };
+    request.onerror = reject;
   });
 
   return promise;
@@ -36,24 +34,52 @@ var BackupService = {
     var self = this;
 
     navigator.mozContacts.oncontactchange = function(event) {
-      if (this.enabled) {
-        this.enqueue(event.contactID);
+      if (self.enabled) {
+        self.enqueue(event.contactID);
+        self.process();
       }
-    }.bind(this);
+    };
   },
 
   enqueue: function(contactID) {
-    console.log('** here we would enqueue ' + contactID);
+    var self = this;
+    if (this.queue.indexOf(contactID)) {
+      this.queue = this.queue.splice(this.queue.indexOf(contactID), 1);
+    }
+    this.queue.push(contactID);
+  },
+
+  process: function(delay) {
+    delay = delay || 0;
+    var self = this;
+
+    setTimeout(function later() {
+      self.backup();
+    }, delay);
+  },
+
+  backup: function() {
+    var contactID = this.queue.shift();
+    if (!contactID) {
+      return;
+    }
+
     findContactById(contactID).then(
       function resolve(result) {
-        console.log('** yay! ' + JSON.stringify(result));
+        try {
+          var vcard = new MozContactTranslator(result).toString();
+          console.log("** yay: " + vcard);
+        } catch(err) {
+          console.error(err);
+        }
       },
       function reject(error) {
         console.error(error);
+        self.enqueue(contactID);
+        self.process(1000);
       }
     );
   },
-
 };
 
 BackupService.init();

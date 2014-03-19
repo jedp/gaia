@@ -197,6 +197,7 @@ var MozContactTranslator = function MozContactTranslator(mozContactInstance) {
     'NICKNAME',
     'BDAY',
     'ANNIVERSARY',
+    'TEL',
     'EMAIL',
     'GENDER',
     'ADR',
@@ -409,7 +410,7 @@ MozContactTranslator.prototype = {
           return new Property('TEL')
             .type(x.type)
             .pref(x.pref)
-            .param('CARRIER', x.carrier)
+            .param('X-MOZ-CARRIER', x.carrier)
             .val(x.value);
         });
   },
