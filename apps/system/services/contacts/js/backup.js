@@ -58,8 +58,33 @@ var BackupService = {
     }, delay);
   },
 
+  upload: function(vcard) {
+    var oReq = new XMLHttpRequest({ mozSystem: true });
+
+    function reqListener() {
+      console.log('contact pushed: ' + oReq.responseText);
+    }
+
+    var settingURL = new SettingsHelper('services.fxaccounts.contacts.url');
+    settingURL.get(function on_ct_get_url(url) {
+      var settingUsername = new SettingsHelper('services.fxaccounts.contacts.username');
+      settingUsername.get(function on_ct_get_username(username) {
+        var settingPassword = new SettingsHelper('services.fxaccounts.contacts.password');
+        settingPassword.get(function on_ct_get_password(password) {
+          oReq.onload = reqListener;
+          var fullURL = url + '/sample.vcf'; // TODO: generate unique name for the vcard
+          console.log("Pushing contacts to: " + fullURL);
+          oReq.open("PUT", fullURL, true, username, password);
+          oReq.setRequestHeader('Content-Type', 'text/vcard; charset=utf-8');
+          oReq.send(vcard);
+        });
+      });
+    });
+  },
+
   backup: function() {
     var contactID = this.queue.shift();
+    var self = this;
     if (!contactID) {
       return;
     }
@@ -69,6 +94,7 @@ var BackupService = {
         try {
           var vcard = new MozContactTranslator(result).toString();
           console.log("** yay: " + vcard);
+          self.upload(vcard);
         } catch(err) {
           console.error(err);
         }
