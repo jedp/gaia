@@ -435,7 +435,7 @@ MozContactTranslator.prototype = {
     return impp.map(
         function(x) {
           return new Property('IMPP')
-            .type(x.type)
+            .param('X-MOZ-TYPE', x.type)
             .pref(x.pref)
             .val(x.value);
         });
