@@ -65,11 +65,11 @@ function loaded() {
     });
 
     test('property params are escaped', function() {
-      var EXPECTED = 'EMAIL;TYPE=tl\\;dr:tldr@example.com';
+      var EXPECTED = 'EMAIL;TYPE="tl;dr: a ^^ ^\'and^\' ^n a stick":tldr@example.com';
 
       var contact = {
         email: [{
-          type: ['tl;dr'],
+          type: ['tl;dr: a ^ "and" \n a stick'],
           value: 'tldr@example.com',
         }],
       };
@@ -274,7 +274,6 @@ function loaded() {
       var result = new MozContactTranslator(contact).IMPP;
       assert.equal(result.length, 3);
       result.forEach(function(x) {
-        console.log('checking ' + x);
         assert.ok(EXPECTED.indexOf(x.toString()) > -1);
       });
     });

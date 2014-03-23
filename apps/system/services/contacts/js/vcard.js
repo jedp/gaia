@@ -5,6 +5,9 @@
 var CRLF = '\r\n';
 var DEFAULT_LINE_LENGTH = 78;
 var PRODID = '-//Mozilla.org//NONSGML Mozilla Contacts v0.0//EN';
+var PARAM_QUOTE_US = /([\^,:;\n])/gm;
+var PARAM_ESCAPE_US = /([\^\n"])/gm;
+var VALUE_ESCAPE_US = /([,;\r\n])/gm;
 
 /*
  * A property MAY be continued on the next physical line anywhere
@@ -78,12 +81,62 @@ function unfold(str) {
   return str.replace(re, '');
 }
 
+// Evert Pot, in Comment 15 on Bug 978288, helps explain the rather convoluted
+// vcard character escaping rules:
+//
+// 1. A parameter can have multiple values. They can be encoded in two
+//    different ways:
+//
+//    a. PARAM=value1;PARAM=value2
+//    b. PARAM=value1,value2
+//
+// 2. A parameter may be surrounded by double-quotes, and this is required if
+//    the value contains special characters.
+//
+// 3. Multiple values surrounded by double-quotes should be encoded as such:
+//
+//    a. PARAM="value1";PARAM="value2";
+//    b. PARAM="value1","value2"
+//
+// 4. Even though this syntax appears in the vcard 4 spec, you must not do
+//    this:
+//
+//    a. PARAM="value1,value2";
+//
+// 5. We simply blacklist characters that will trigger the serializer to
+//    switch to double-quote escaping, namely ; : \n ^ ,
+//
+// 6. vCard 4 does not define a way to escape in double-quotes in parameters.
+//    This is remedied by http://tools.ietf.org/html/rfc6868, which introduces
+//    the caret as an escape character
+function escParam(str) {
+  'use strict';
+
+  str = str || '';
+
+  // No troublesome characters?  Don't need to enclose in double-quotes and
+  // escape.
+  if (!str.match(PARAM_QUOTE_US)) {
+    return str;
+  }
+
+  return '"' + str.replace(PARAM_ESCAPE_US, rfc6868_replacer) + '"';
+}
+
+function rfc6868_replacer(_, p) {
+  return {
+    '"':  "^'",
+    '\n': '^n',
+    '^':  '^^'
+  }[p];
+}
+
 function esc(str) {
   'use strict';
 
   str = str || '';
-  var re = /([,;\r\n])/gm;
-  return str.replace(re, '\\$1');
+
+  return str.replace(VALUE_ESCAPE_US, '\\$1');
 }
 
 // Utility class for composing a line
@@ -119,7 +172,7 @@ Property.prototype = {
     value = value || [];
     escaped = escaped || false;
     if (typeof value == 'string' && value !== '') {
-      this.params.push(name + '=' + (escaped ? value : esc(value)));
+      this.params.push(name + '=' + (escaped ? value : escParam(value)));
     }
 
     // Note: Perreault, in his example vcard, has quotes around value lists
@@ -130,7 +183,7 @@ Property.prototype = {
       var valueStr = (
         (value.length > 1) ?
         value.map(esc).join(',') :
-        esc(value[0]));
+        escParam(value[0]));
       return this.param(name, valueStr, true);
     }
     return this;
