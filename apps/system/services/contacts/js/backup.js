@@ -63,13 +63,14 @@ var BackupService = {
 
     function reqListener() {
       console.log('contact pushed: ' + oReq.responseText);
+      // TODO: check for failures and retry if necessary
     }
 
-    var settingURL = new SettingsHelper('services.fxaccounts.contacts.url');
+    var settingURL = SettingsHelper('services.fxaccounts.contacts.url', 'http://localhost/owncloud/remote.php/carddav/addressbooks/francois/contacts');
     settingURL.get(function on_ct_get_url(url) {
-      var settingUsername = new SettingsHelper('services.fxaccounts.contacts.username');
+      var settingUsername = new SettingsHelper('services.fxaccounts.contacts.username', "francois");
       settingUsername.get(function on_ct_get_username(username) {
-        var settingPassword = new SettingsHelper('services.fxaccounts.contacts.password');
+        var settingPassword = new SettingsHelper('services.fxaccounts.contacts.password', "francois");
         settingPassword.get(function on_ct_get_password(password) {
           oReq.onload = reqListener;
           var fullURL = url + '/sample.vcf'; // TODO: generate unique name for the vcard
