@@ -108,6 +108,33 @@ contacts.Settings = (function() {
      * Adding listeners
      */
 
+    // XXX this is just temporary - it will move to its own page.
+    // Right now, it's a hack to prove that our IAC and indexedDB bits are
+    // working right.
+    var app;
+    var req = navigator.mozApps.getSelf();
+    req.onsuccess = function(evt) {
+      app = evt.target.result;
+    };
+    document.querySelector('#backupURL').oninput = function(evt) {
+      if (!app) {
+        return;
+      }
+      console.log('you said:' + evt.target.value);
+      app.connect('contacts-backup-settings').then(
+        function onConnectionAccepted(ports) {
+          ports.forEach(function(port) {
+              port.postMessage({
+                url: evt.target.value,
+                username: 'foo',
+                password: '1233456'
+              });
+          });
+        }
+      );
+    };
+    // XXX end of hack
+
     // Listener for updating the timestamp based on extServices
     window.addEventListener('message', function updateList(e) {
       if (e.data.type === 'import_updated') {

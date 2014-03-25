@@ -82,12 +82,12 @@
      { "nfc-manager-send-file": "/index.html" }
   ],
   "connections": {
-    "contacts-settings": {
+    "contacts-backup-settings": {
       "description": "Update backup service settings for contacts",
       "rules": {
         "minimumAccessLevel": "certified"
       }
-    }
+    },
     "mediacomms": {
       "description": "Communication with media apps for now playing info",
       "rules": {}
