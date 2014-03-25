@@ -67,6 +67,23 @@
                  <b data-l10n-id="bulkDeleteButton">Bulk delete</b>
               </button>
             </li>
+            <li id="backupContacts">
+              <h3 data-l10n-id="Backup">Backup</h3>
+              <form>
+                <label>Service URL</label>
+                <input type="text" id="backupURL" placeholder="url" x-inputmode="verbatim"></input>
+                <label>Username</label>
+                <input type="text" id="backupIdentity" data-l10n-id="identityInput" placeholder="username" x-inputmode="verbatim"></input>
+                <label>Password</label>
+                <input type="password" id="backupPassword" data-l10n-id="password" placeholder="password" value="" x-inputmode="verbatim"></input>
+                <div class="horizontal">
+                  <p data-l10n-id="showPassword">Show Password</p>
+                  <label class="pack-checkbox" for="backup_showPassword">
+                    <input type="checkbox" id="backup_showPassword"></input>
+                    <span></span>
+                </div>
+              </form>
+            </li>
           </ul>
         </section>
       </article>
