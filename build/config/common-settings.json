@@ -78,6 +78,8 @@
    "icc.selectTimeout": 150000,
    "identity.fxaccounts.reset-password.url": "https://accounts.firefox.com/reset_password",
    "identity.fxaccounts.ui.enabled": false,
+   "identity.services.contacts.enabled": true,
+   "identity.services.contacts.providers": [{"name":"Fruux", "url":"https://foo.org", "selected":true}, {"name":"Custom"}],
    "keyboard.vibration": true,
    "keyboard.clicksound": false,
    "keyboard.autocorrect": true,

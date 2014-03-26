@@ -44,11 +44,6 @@
                 Export Contacts
               </button>
             </li>
-            <li id="backupContacts">
-              <button class="icon icon-export" data-l10n-id="backupContactsButton">
-                Backup Contacts Automatically
-              </button>
-            </li>
           </ul>
           <header id="fb-header">
             <h2 data-l10n-id="facebook">Facebook</h2>
@@ -80,6 +75,12 @@
             <li>
               <button id="bulkDelete" class="fillflow-row action action-delete danger">
                  <b data-l10n-id="bulkDeleteButton">Bulk delete</b>
+              </button>
+            </li>
+
+            <li id="backupContacts">
+              <button class="icon icon-developer" data-l10n-id="backupContactsButton">
+                Developer
               </button>
             </li>
           </ul>
@@ -135,14 +136,24 @@
     <section data-theme="organic" id="backup-settings" role="region" class="skin-organic view view-right">
       <header id="backup-settings-header">
         <button id="backup-settings-back" class="negative"><span class="icon icon-back" data-l10n-id="back">back</span></button>
-        <h1 id='backup-settings-title'></h1>
+        <menu type="toolbar">
+          <button id="submit-backup-settings" type="submit"><span data-l10n-id="ok">OK</span></button>
+        </menu>
+        <h1 id='backup-settings-title'>Backup Settings </h1>
       </header>
       <article class="view-body">
         <section role="region" class="view-body-inner">
           <ul data-type="list">
             <li id="backupContacts">
               <h3 data-l10n-id="Backup">Backup</h3>
-              <form>
+              <label>Backup Service</label>
+              <span class="button icon icon-dialog">
+                <select name="backupServiceSelect">
+                  <option value="fruux" selected>Fruux (default)</option>
+                  <option value="custom" data-l10n-id="custom">Custom</option>
+                </select>
+              </span>
+              <form id="backupServiceConfigForm">
                 <label>Service URL</label>
                 <input type="text" id="backupURL" placeholder="url" x-inputmode="verbatim"></input>
                 <label>Username</label>
