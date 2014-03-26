@@ -4,8 +4,6 @@
 
 'use strict';
 
-var SYNC_ENABLED_PREF = 'services.fxaccounts.contacts.enabled';
-
 navigator.mozSetMessageHandler('connection', function(connectionRequest) {
   if (connectionRequest.keyword !== 'contacts-backup-settings') {
     return;
@@ -19,11 +17,12 @@ navigator.mozSetMessageHandler('connection', function(connectionRequest) {
     switch (detail.action) {
       case 'enable':
         navigator.mozSettings.createLock().set({SYNC_ENABLED_PREF: detail.enabled});
-        console.log("enable me? " + detail.enabled);
+        console.log('enable me? ' + detail.enabled);
         break;
       case 'configure':
         // XXX somehow we would get the id of the currently-signed-in fxa user in
         // here and add it to the message data.
+        console.log('received data over iac: ' + JSON.stringify(detail));
         ContactsBackupStorage.save(detail);
         break;
       default:

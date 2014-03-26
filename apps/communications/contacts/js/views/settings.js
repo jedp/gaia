@@ -17,7 +17,7 @@
 /* global VCFReader */
 
 var contacts = window.contacts || {};
-var SYNC_ENABLED_PREF = 'services.fxaccounts.contacts.enabled';
+var SYNC_ENABLED_PREF = 'identity.services.contacts.enabled';
 
 /***
  This class handles all the activity regarding
@@ -33,6 +33,8 @@ contacts.Settings = (function() {
     orderByLastName,
     syncCheckBox,
     syncEnabled = false,
+    backupPassword,
+    showBackupPassword,
     importSettingsPanel,
     importSettingsTitle,
     importContacts,
@@ -61,24 +63,17 @@ contacts.Settings = (function() {
     req.onsuccess = function(evt) {
       app = evt.target.result;
     };
-    req.onerror = function(evt) {
-      console.error('** failed to get self : ' + evt);
-    };
 
     // Set the toggle switch to show whether sync is enabled
-    // XXX settings seems to have it in for me
-    // XXX I cannot for the life of me get this to work
-    var lock = navigator.mozSettings.createLock()
+    var reqEnabled = window.navigator.mozSettings.createLock()
         .get(SYNC_ENABLED_PREF);
-    lock.onsuccess = function() {
-      syncEnabled = lock.result[SYNC_ENABLED_PREF];
-      console.log('** got setting: ' + syncEnabled);
-      if (syncEnabled === undefined) {
-          console.log('** what the heck - value was undefined');
-          syncEnabled = true;
-      }
+    reqEnabled.onsuccess = function() {
+      syncEnabled = reqEnabled.result[SYNC_ENABLED_PREF];
       updateOrderingUI();
     };
+
+    // XXX prepopulate the backup settings card
+    // with info for the current backup service
 
     // Create the DOM for our SIM cards and listen to any changes
     IccHandler.init(new SimDomGenerator(), contacts.Settings.cardStateChanged);
@@ -133,6 +128,17 @@ contacts.Settings = (function() {
     var syncItem = document.getElementById('enableSync');
     syncCheckBox = syncItem.querySelector('[name="sync.enabled"]');
     syncItem.addEventListener('click', onSyncChange.bind(this));
+    var configBackup = document.getElementById('submit-backup-settings');
+    configBackup.addEventListener('click', onConfigBackup.bind(this));
+
+    // show/hide password in backup config card
+    backupPassword = document.getElementById('backupPassword');
+    showBackupPassword = document.getElementById('backup_showPassword');
+    showBackupPassword.checked = false;
+    showBackupPassword.onchange = function() {
+      backupPassword.type = this.checked ? 'text' : 'password';
+    };
+
     // Creating a navigation handler from this view
     navigationHandler = new navigationStack('view-settings');
 
@@ -147,29 +153,6 @@ contacts.Settings = (function() {
     /*
      * Adding listeners
      */
-
-    // XXX this is just temporary - it will move to its own page.
-    // Right now, it's a hack to prove that our IAC and indexedDB bits are
-    // working right.
-    document.querySelector('#backupURL').oninput = function(evt) {
-      if (!app) {
-        return;
-      }
-      console.log('you said:' + evt.target.value);
-      app.connect('contacts-backup-settings').then(
-        function onConnectionAccepted(ports) {
-          ports.forEach(function(port) {
-              port.postMessage({
-                action: 'configure',
-                url: evt.target.value,
-                username: 'foo',
-                password: '1233456'
-              });
-          });
-        }
-      );
-    };
-    // XXX end of hack
 
     // Listener for updating the timestamp based on extServices
     window.addEventListener('message', function updateList(e) {
@@ -251,8 +234,6 @@ contacts.Settings = (function() {
         importSettingsPanel.classList.remove('backup');
     });
   }
-
-
 
   function importContactsHandler() {
       // Hide elements for export and transition
@@ -717,9 +698,8 @@ contacts.Settings = (function() {
     updateOrderingUI();
   };
 
-  var onSyncChange = function onSyncChange(et) {
+  var onSyncChange = function onSyncChange(evt) {
     if (!app) {
-      console.error("** I don't know who I am");
       return;
     }
     syncEnabled = !syncEnabled;
@@ -735,6 +715,25 @@ contacts.Settings = (function() {
         });
       }
     );
+  };
+
+  var onConfigBackup = function onConfigBackup(evt) {
+    var data = {
+      action: 'configure',
+      url: document.getElementById('backupURL').value,
+      username: document.getElementById('backupIdentity').value,
+      password: document.getElementById('backupPassword').value
+    };
+    app.connect('contacts-backup-settings').then(
+      function onConnectionAccepted(ports) {
+        ports.forEach(function(port) {
+          port.postMessage(data);
+        });
+      }
+    );
+    // leave the page
+    // XXX we probably want to check that the settings are valid
+    settingsBackHandler();
   };
 
   // Import contacts from SIM card and updates ui
