@@ -77,7 +77,7 @@
    "icc.goBackTimeout": 1000,
    "icc.selectTimeout": 150000,
    "identity.fxaccounts.reset-password.url": "https://accounts.firefox.com/reset_password",
-   "identity.fxaccounts.ui.enabled": false,
+   "identity.fxaccounts.ui.enabled": true,
    "identity.services.contacts.enabled": true,
    "identity.services.contacts.providers": {"Fruux": {"url":"http://moz.fruux.net", "selected":true}, "custom": {}},
    "keyboard.vibration": true,

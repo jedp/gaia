@@ -1,8 +1,22 @@
 /* Listener for contacts changes */
 
+/* global FxAccountsClient */
+
 (function() {
 
 'use strict';
+
+// know thyself
+console.log("** typeof iac helper is " + typeof FxAccountsIACHelper);
+console.log("** typeof iac helper getAccounts is " + typeof FxAccountsIACHelper.getAccounts);
+FxAccountsIACHelper.getAccounts(
+  function success(data) {
+    console.log("** got accounts : " + JSON.stringify(data));
+  },
+  function failure(error) {
+    console.error(error.toString());
+  }
+);
 
 // Get Fruux config from settings
 // teensy race condition here as we read from settings
