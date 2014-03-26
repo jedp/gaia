@@ -4,6 +4,8 @@
 
 'use strict';
 
+var CONTACTS_URL = 'http://moz.fruux.net';
+
 // Find a single contact by id - returns promise
 function findContactById(contactID) {
   var options = {
@@ -58,28 +60,96 @@ var BackupService = {
     }, delay);
   },
 
+  customProvider: function (cb) {
+    var url = localStorage.getItem('backup-url');
+    var username = localStorage.getItem('backup-username');
+    var password = localStorage.getItem('backup-password');
+
+    // TODO: stop overridding these prefs
+    url = 'http://localhost/owncloud/remote.php/carddav/addressbooks/francois/contacts';
+    username = 'francois';
+    password = 'francois';
+
+    setTimeout(function () {
+      cb(url, username, password);
+    }, 0);
+  },
+
+  defaultProvider: function (cb) {
+    console.log('Getting new fruux credentials...');
+
+    // TODO: make sure .watch() only gets called once
+    navigator.mozId.watch({
+      wantIssuer: 'firefox-accounts',
+      audience: CONTACTS_URL,
+      loggedInUser: null,
+      onready: function () {
+        console.log('FxA is ready');
+      },
+      onerror: function () {
+        console.log('FxA error :(');
+      },
+      onlogin: function (assertion) {
+        console.log('got FxA assertion: ' + assertion);
+
+        // TODO: save these transient credentials to localStorage to avoid
+        // provisioning every time we need to push a contact
+
+        var oReq = new XMLHttpRequest({ mozSystem: true });
+
+        function reqListener() {
+          var creds = JSON.parse(oReq.responseText); // TODO: check for errors
+
+          // TODO: discover the addressbook URL (see Discovery on http://sabre.io/dav/building-a-carddav-client/)
+          var url = CONTACTS_URL + creds.links['addressbook-home-set'] + 'default';
+
+          cb(url, creds.basicAuth.userName, creds.basicAuth.password);
+        }
+        oReq.onload = reqListener;
+
+        var data = {
+          assertion: assertion
+        };
+        oReq.open('POST', CONTACTS_URL + '/browserid/login', true);
+        oReq.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
+        oReq.send(JSON.stringify(data));
+      },
+      onlogout: function () {
+        console.log('user logged out of FxA');
+      }
+    });
+    navigator.mozId.request();
+  },
+
   upload: function(vcard) {
+    var self = this;
+    if (!self.enabled) {
+      return;
+    }
+
     var oReq = new XMLHttpRequest({ mozSystem: true });
 
     function reqListener() {
       console.log('contact pushed: ' + oReq.responseText);
       // TODO: check for failures and retry if necessary
     }
+    oReq.onload = reqListener;
 
-    var settingURL = SettingsHelper('services.fxaccounts.contacts.url', 'http://localhost/owncloud/remote.php/carddav/addressbooks/francois/contacts');
-    settingURL.get(function on_ct_get_url(url) {
-      var settingUsername = new SettingsHelper('services.fxaccounts.contacts.username', "francois");
-      settingUsername.get(function on_ct_get_username(username) {
-        var settingPassword = new SettingsHelper('services.fxaccounts.contacts.password', "francois");
-        settingPassword.get(function on_ct_get_password(password) {
-          oReq.onload = reqListener;
-          var fullURL = url + '/sample.vcf'; // TODO: generate unique name for the vcard
-          console.log("Pushing contacts to: " + fullURL);
-          oReq.open("PUT", fullURL, true, username, password);
-          oReq.setRequestHeader('Content-Type', 'text/vcard; charset=utf-8');
-          oReq.send(vcard);
-        });
-      });
+    var provider = localStorage.getItem('backup-provider');
+    provider = 0; // TODO: stop overriding this pref
+    var providerFunction;
+    if (0 === provider) {
+      providerFunction = self.defaultProvider;
+    } else if (1 === provider) {
+      providerFunction = self.customProvider;
+    }
+
+    providerFunction(function (url, username, password) {
+      var fullURL = url + '/sample.vcf'; // TODO: generate unique name for the vcard
+      console.log('Pushing contacts to: ' + fullURL + ' using ' + username + ':' + password);
+      oReq.open('PUT', fullURL, true, username, password);
+      oReq.setRequestHeader('Content-Type', 'text/vcard; charset=utf-8');
+      oReq.send(vcard);
     });
   },
 
