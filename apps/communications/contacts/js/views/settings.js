@@ -17,6 +17,7 @@
 /* global VCFReader */
 
 var contacts = window.contacts || {};
+var SYNC_ENABLED_PREF = 'services.fxaccounts.contacts.enabled';
 
 /***
  This class handles all the activity regarding
@@ -25,9 +26,13 @@ var contacts = window.contacts || {};
 contacts.Settings = (function() {
 
   var navigationHandler,
+    app,
     importSettingsBack,
+    backupSettingsBack,
     orderCheckBox,
     orderByLastName,
+    syncCheckBox,
+    syncEnabled = false,
     importSettingsPanel,
     importSettingsTitle,
     importContacts,
@@ -51,6 +56,30 @@ contacts.Settings = (function() {
 
   // Initialise the settings screen (components, listeners ...)
   var init = function initialize() {
+    // Get a handle on our own app so we can participate in the IAC API
+    var req = navigator.mozApps.getSelf();
+    req.onsuccess = function(evt) {
+      app = evt.target.result;
+    };
+    req.onerror = function(evt) {
+      console.error('** failed to get self : ' + evt);
+    };
+
+    // Set the toggle switch to show whether sync is enabled
+    // XXX settings seems to have it in for me
+    // XXX I cannot for the life of me get this to work
+    var lock = navigator.mozSettings.createLock()
+        .get(SYNC_ENABLED_PREF);
+    lock.onsuccess = function() {
+      syncEnabled = lock.result[SYNC_ENABLED_PREF];
+      console.log('** got setting: ' + syncEnabled);
+      if (syncEnabled === undefined) {
+          console.log('** what the heck - value was undefined');
+          syncEnabled = true;
+      }
+      updateOrderingUI();
+    };
+
     // Create the DOM for our SIM cards and listen to any changes
     IccHandler.init(new SimDomGenerator(), contacts.Settings.cardStateChanged);
 
@@ -88,6 +117,7 @@ contacts.Settings = (function() {
     var value = newOrderByLastName === null ? orderByLastName :
       newOrderByLastName;
     orderCheckBox.checked = value;
+    syncCheckBox.checked = syncEnabled;
   };
 
   var updateImportTitle = function updateImportTitle(l10nString) {
@@ -100,6 +130,9 @@ contacts.Settings = (function() {
     var orderItem = document.getElementById('settingsOrder');
     orderCheckBox = orderItem.querySelector('[name="order.lastname"]');
     orderItem.addEventListener('click', onOrderingChange.bind(this));
+    var syncItem = document.getElementById('enableSync');
+    syncCheckBox = syncItem.querySelector('[name="sync.enabled"]');
+    syncItem.addEventListener('click', onSyncChange.bind(this));
     // Creating a navigation handler from this view
     navigationHandler = new navigationStack('view-settings');
 
@@ -118,11 +151,6 @@ contacts.Settings = (function() {
     // XXX this is just temporary - it will move to its own page.
     // Right now, it's a hack to prove that our IAC and indexedDB bits are
     // working right.
-    var app;
-    var req = navigator.mozApps.getSelf();
-    req.onsuccess = function(evt) {
-      app = evt.target.result;
-    };
     document.querySelector('#backupURL').oninput = function(evt) {
       if (!app) {
         return;
@@ -132,6 +160,7 @@ contacts.Settings = (function() {
         function onConnectionAccepted(ports) {
           ports.forEach(function(port) {
               port.postMessage({
+                action: 'configure',
                 url: evt.target.value,
                 username: 'foo',
                 password: '1233456'
@@ -152,7 +181,10 @@ contacts.Settings = (function() {
 
     // Navigation back
     importSettingsBack = document.getElementById('import-settings-back');
-    importSettingsBack.addEventListener('click', importSettingsBackHandler);
+    importSettingsBack.addEventListener('click', settingsBackHandler);
+
+    backupSettingsBack = document.getElementById('backup-settings-back');
+    backupSettingsBack.addEventListener('click', settingsBackHandler);
 
     // Handlers for the navigation through the panels
     importContacts = document.getElementById('importContacts');
@@ -162,6 +194,10 @@ contacts.Settings = (function() {
     exportContacts = document.getElementById('exportContacts');
     exportContacts.firstElementChild.
       addEventListener('click', exportContactsHandler);
+
+    backupContacts = document.getElementById('backupContacts');
+    backupContacts.firstElementChild.
+      addEventListener('click', backupContactsHandler);
 
     // Handlers for the actions related with EXPORT/IMPORT
     importOptions = document.getElementById('import-options');
@@ -206,14 +242,17 @@ contacts.Settings = (function() {
   };
 
   // UI event handlers
-  function importSettingsBackHandler() {
+  function settingsBackHandler() {
     navigationHandler.back(function navigateBackHandler() {
         // Removing the previous assigned style for having
         // a clean view
         importSettingsPanel.classList.remove('export');
         importSettingsPanel.classList.remove('import');
+        importSettingsPanel.classList.remove('backup');
     });
   }
+
+
 
   function importContactsHandler() {
       // Hide elements for export and transition
@@ -234,6 +273,13 @@ contacts.Settings = (function() {
         });
       }
   }
+
+  function backupContactsHandler() {
+      // Hide elements for backup and transition
+      importSettingsPanel.classList.add('backup');
+      updateImportTitle('backupContactsTitle');
+      navigationHandler.go('backup-settings', 'right-left');
+  };
 
   // Given an event, select wich should be the targeted
   // import/export source
@@ -669,6 +715,26 @@ contacts.Settings = (function() {
     newOrderByLastName = !orderCheckBox.checked;
     utils.cookie.update({order: newOrderByLastName});
     updateOrderingUI();
+  };
+
+  var onSyncChange = function onSyncChange(et) {
+    if (!app) {
+      console.error("** I don't know who I am");
+      return;
+    }
+    syncEnabled = !syncEnabled;
+    syncCheckBox.checked = syncEnabled;
+    // Tell the backup app to stop backing up contacts
+    app.connect('contacts-backup-settings').then(
+      function onConnectionAccepted(ports) {
+        ports.forEach(function(port) {
+            port.postMessage({
+              action: 'enable',
+              enabled: syncEnabled
+            });
+        });
+      }
+    );
   };
 
   // Import contacts from SIM card and updates ui

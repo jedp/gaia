@@ -20,6 +20,15 @@
               </aside>
               <p data-l10n-id="contactsOrderBy">Order by last name</p>
             </li>
+            <li id="enableSync">
+             <aside class="pack-end">
+                <label class="pack-switch">
+                  <input type="checkbox" name="sync.enabled" />
+                  <span></span>
+                </label>
+              </aside>
+              <p data-l10n-id="contactsSyncEnabled">Sync Contacts</p>
+            </li>
           </ul>
           <header>
             <h2 data-l10n-id="transferContactsTitle">Transfer Contacts</h2>
@@ -33,6 +42,11 @@
             <li id="exportContacts" data-source="sd">
               <button class="icon icon-export" data-l10n-id="exportContactsButton">
                 Export Contacts
+              </button>
+            </li>
+            <li id="backupContacts">
+              <button class="icon icon-export" data-l10n-id="backupContactsButton">
+                Backup Contacts Automatically
               </button>
             </li>
           </ul>
@@ -58,6 +72,7 @@
               <p id="no-connection" data-l10n-id="noConnection11"></p>
             </li>
           </ul>
+
           <header>
             <h2 data-l10n-id="ContactManagementTitle">Contacts Management</h2>
           </header>
@@ -67,24 +82,8 @@
                  <b data-l10n-id="bulkDeleteButton">Bulk delete</b>
               </button>
             </li>
-            <li id="backupContacts">
-              <h3 data-l10n-id="Backup">Backup</h3>
-              <form>
-                <label>Service URL</label>
-                <input type="text" id="backupURL" placeholder="url" x-inputmode="verbatim"></input>
-                <label>Username</label>
-                <input type="text" id="backupIdentity" data-l10n-id="identityInput" placeholder="username" x-inputmode="verbatim"></input>
-                <label>Password</label>
-                <input type="password" id="backupPassword" data-l10n-id="password" placeholder="password" value="" x-inputmode="verbatim"></input>
-                <div class="horizontal">
-                  <p data-l10n-id="showPassword">Show Password</p>
-                  <label class="pack-checkbox" for="backup_showPassword">
-                    <input type="checkbox" id="backup_showPassword"></input>
-                    <span></span>
-                </div>
-              </form>
-            </li>
           </ul>
+
         </section>
       </article>
     </section>
@@ -128,6 +127,35 @@
               <button class="icon icon-bluetooth" data-l10n-id="bluetooth">
                 Bluetooth
               </button>
+            </li>
+          </ul>
+        </section>
+      </article>
+    </section>
+    <section data-theme="organic" id="backup-settings" role="region" class="skin-organic view view-right">
+      <header id="backup-settings-header">
+        <button id="backup-settings-back" class="negative"><span class="icon icon-back" data-l10n-id="back">back</span></button>
+        <h1 id='backup-settings-title'></h1>
+      </header>
+      <article class="view-body">
+        <section role="region" class="view-body-inner">
+          <ul data-type="list">
+            <li id="backupContacts">
+              <h3 data-l10n-id="Backup">Backup</h3>
+              <form>
+                <label>Service URL</label>
+                <input type="text" id="backupURL" placeholder="url" x-inputmode="verbatim"></input>
+                <label>Username</label>
+                <input type="text" id="backupIdentity" data-l10n-id="identityInput" placeholder="username" x-inputmode="verbatim"></input>
+                <label>Password</label>
+                <input type="password" id="backupPassword" data-l10n-id="password" placeholder="password" value="" x-inputmode="verbatim"></input>
+                <div class="horizontal">
+                  <p data-l10n-id="showPassword">Show Password</p>
+                  <label class="pack-checkbox" for="backup_showPassword">
+                    <input type="checkbox" id="backup_showPassword"></input>
+                    <span></span>
+                </div>
+              </form>
             </li>
           </ul>
         </section>
