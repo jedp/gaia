@@ -4,7 +4,14 @@
 
 'use strict';
 
-var CONTACTS_URL = 'http://moz.fruux.net';
+// Get Fruux config from settings
+// teensy race condition here as we read from settings
+var BACKUP_PROVIDERS = 'identity.services.contacts.providers';
+var FRUUX_CONFIG = {};
+var req = navigator.mozSettings.createLock().get(BACKUP_PROVIDERS);
+req.onsuccess = function() {
+  FRUUX_CONFIG = req.result[BACKUP_PROVIDERS].Fruux;
+};
 
 // Find a single contact by id - returns promise
 function findContactById(contactID) {
