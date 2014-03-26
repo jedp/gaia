@@ -79,7 +79,7 @@
    "identity.fxaccounts.reset-password.url": "https://accounts.firefox.com/reset_password",
    "identity.fxaccounts.ui.enabled": false,
    "identity.services.contacts.enabled": true,
-   "identity.services.contacts.providers": [{"name":"Fruux", "url":"https://foo.org", "selected":true}, {"name":"Custom"}],
+   "identity.services.contacts.providers": {"Fruux": {"url":"http://moz.fruux.net", "selected":true}, "custom": {}},
    "keyboard.vibration": true,
    "keyboard.clicksound": false,
    "keyboard.autocorrect": true,
