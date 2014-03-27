@@ -99,10 +99,29 @@ var BackupService = {
     }, 0);
   },
 
+  retryFruuxProvisioning: function () {
+    var self = this;
+    // TODO: put a limit of 5 attempts on fruux provisioning
+
+    // Try fruux provisioning again
+    console.log('Provisioning failed, will try again.');
+    navigator.mozId.request();
+  },
+
   receiveFruuxCreds: function () {
     var self = this;
     return function () {
-      var creds = JSON.parse(this.responseText); // TODO: check for errors
+      var creds;
+      try {
+        creds = JSON.parse(this.responseText);
+      } catch (e) {
+        self.retryFruuxProvisioning();
+        return;
+      }
+      if (!creds.links || !creds.basicAuth) {
+        self.retryFruuxProvisioning();
+        return;
+      }
 
       // TODO: discover the addressbook URL (see Discovery on http://sabre.io/dav/building-a-carddav-client/)
       var url = CONTACTS_URL + creds.links['addressbook-home-set'] + 'default';
