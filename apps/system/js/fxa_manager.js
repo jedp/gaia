@@ -53,6 +53,7 @@
 var FxAccountsManager = {
 
   init: function fxa_mgmt_init() {
+    console.log('&&& fxa manager init');
     // Set up the listener for IAC API connection requests.
     window.addEventListener('iac-fxa-mgmt', this.onPortMessage);
     // Listen for unsolicited chrome events coming from the implementation o
@@ -68,6 +69,7 @@ var FxAccountsManager = {
   },
 
   onPortMessage: function fxa_mgmt_onPortMessage(event) {
+    console.log('$$ a message ');
     if (!event || !event.detail) {
       console.error('Wrong event');
       return;
@@ -75,6 +77,8 @@ var FxAccountsManager = {
 
     var self = FxAccountsManager;
     var methodName = event.detail.name;
+
+    console.log('$$ fxa_manager received: ' + methodName);
 
     switch (methodName) {
       case 'getAccounts':
@@ -171,4 +175,5 @@ var FxAccountsManager = {
   }
 };
 
+console.log('now init fxa manager');
 FxAccountsManager.init();

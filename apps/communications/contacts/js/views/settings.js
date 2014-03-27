@@ -250,6 +250,16 @@ contacts.Settings = (function() {
 
   function backupContactsHandler() {
       // Hide elements for backup and transition
+      console.log('** getting accounts');
+      FxAccountsIACHelper.getAccounts(
+          function success(data) {
+            console.log('** got accounts : ' + JSON.stringify(data));
+          },
+          function failure(error) {
+            console.error(error.toString());
+          }
+        );
+
       importSettingsPanel.classList.add('backup');
       updateImportTitle('backupContactsTitle');
       navigationHandler.go('backup-settings', 'right-left');

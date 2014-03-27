@@ -64,6 +64,7 @@ var FxAccountsIACHelper = function FxAccountsIACHelper() {
   };
 
   var onMessage = function onMessage(evt) {
+    console.log("$$ msg received in fxa_iac_client");
     if (evt && evt.data) {
       var message = evt.data;
 
@@ -155,11 +156,13 @@ var FxAccountsIACHelper = function FxAccountsIACHelper() {
 
   var sendMessage = function sendMessage(message, successCb, errorCb) {
     if (port) {
+      console.log("$$ have a port; sending");
       _sendMessage(message, successCb, errorCb);
       return;
     }
 
     connect(function() {
+      console.log("$$ called connect");
       _sendMessage(message, successCb, errorCb);
     });
   };
@@ -168,6 +171,7 @@ var FxAccountsIACHelper = function FxAccountsIACHelper() {
   // Will be always using the default keyword and forcing it
   // to a single manifest.
   var _sendMessage = function _sendMessage(message, successCb, errorCb) {
+    console.log("$$ _sendMessage " + JSON.stringify(message));
     var name = message.name;
     if (!name) {
       return;
@@ -176,6 +180,7 @@ var FxAccountsIACHelper = function FxAccountsIACHelper() {
     if (!callbacks[name]) {
       callbacks[name] = [];
     }
+    console.log("$$ adding callbacks");
     callbacks[name].push({
       successCb: successCb,
       errorCb: errorCb
@@ -187,6 +192,7 @@ var FxAccountsIACHelper = function FxAccountsIACHelper() {
   };
 
   var getAccounts = function getAccounts(successCb, errorCb) {
+    console.log("$$ get accounts");
     sendMessage({
       'name': 'getAccounts'
     }, successCb, errorCb);
