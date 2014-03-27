@@ -31,6 +31,7 @@ function findContactById(contactID) {
 var BackupService = {
   enabled: true,    // we'll set this with a pref later
   queue: [],
+  fruuxCallback: undefined,
 
   init: function() {
     var self = this;
@@ -41,6 +42,29 @@ var BackupService = {
         self.process();
       }
     };
+
+    navigator.mozId.watch({
+      wantIssuer: 'firefox-accounts',
+      audience: CONTACTS_URL,
+      loggedInUser: null,
+      onready: function () {
+        console.log('FxA is ready');
+      },
+      onerror: function () {
+        console.log('FxA error :(');
+      },
+      onlogin: function (assertion) {
+        console.log('got FxA assertion: ' + assertion);
+        var xhr = new XMLHttpRequest({ mozSystem: true });
+        xhr.onload = self.receiveFruuxCreds();
+        xhr.open('POST', CONTACTS_URL + '/browserid/login', true);
+        xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
+        xhr.send(JSON.stringify({ assertion: assertion }));
+      },
+      onlogout: function () {
+        console.log('User is logged out of FxA');
+      }
+    });
   },
 
   enqueue: function(contactID) {
@@ -60,7 +84,7 @@ var BackupService = {
     }, delay);
   },
 
-  customProvider: function (cb) {
+  customProvider: function (self, cb) {
     var url = localStorage.getItem('backup-url');
     var username = localStorage.getItem('backup-username');
     var password = localStorage.getItem('backup-password');
@@ -75,49 +99,23 @@ var BackupService = {
     }, 0);
   },
 
-  defaultProvider: function (cb) {
+  receiveFruuxCreds: function () {
+    var self = this;
+    return function () {
+      var creds = JSON.parse(this.responseText); // TODO: check for errors
+
+      // TODO: discover the addressbook URL (see Discovery on http://sabre.io/dav/building-a-carddav-client/)
+      var url = CONTACTS_URL + creds.links['addressbook-home-set'] + 'default';
+
+      // TODO: save these transient credentials to localStorage to avoid
+      // provisioning every time we need to push a contact
+      self.fruuxCallback(url, creds.basicAuth.userName, creds.basicAuth.password);
+    };
+  },
+
+  defaultProvider: function (self, cb) {
     console.log('Getting new fruux credentials...');
-
-    // TODO: make sure .watch() only gets called once
-    navigator.mozId.watch({
-      wantIssuer: 'firefox-accounts',
-      audience: CONTACTS_URL,
-      loggedInUser: null,
-      onready: function () {
-        console.log('FxA is ready');
-      },
-      onerror: function () {
-        console.log('FxA error :(');
-      },
-      onlogin: function (assertion) {
-        console.log('got FxA assertion: ' + assertion);
-
-        // TODO: save these transient credentials to localStorage to avoid
-        // provisioning every time we need to push a contact
-
-        var oReq = new XMLHttpRequest({ mozSystem: true });
-
-        function reqListener() {
-          var creds = JSON.parse(oReq.responseText); // TODO: check for errors
-
-          // TODO: discover the addressbook URL (see Discovery on http://sabre.io/dav/building-a-carddav-client/)
-          var url = CONTACTS_URL + creds.links['addressbook-home-set'] + 'default';
-
-          cb(url, creds.basicAuth.userName, creds.basicAuth.password);
-        }
-        oReq.onload = reqListener;
-
-        var data = {
-          assertion: assertion
-        };
-        oReq.open('POST', CONTACTS_URL + '/browserid/login', true);
-        oReq.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
-        oReq.send(JSON.stringify(data));
-      },
-      onlogout: function () {
-        console.log('user logged out of FxA');
-      }
-    });
+    self.fruuxCallback = cb;
     navigator.mozId.request();
   },
 
@@ -144,7 +142,7 @@ var BackupService = {
       providerFunction = self.customProvider;
     }
 
-    providerFunction(function (url, username, password) {
+    providerFunction(self, function (url, username, password) {
       var fullURL = url + '/sample.vcf'; // TODO: generate unique name for the vcard
       console.log('Pushing contacts to: ' + fullURL + ' using ' + username + ':' + password);
       oReq.open('PUT', fullURL, true, username, password);
