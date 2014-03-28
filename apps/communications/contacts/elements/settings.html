@@ -144,27 +144,28 @@
       <article class="view-body">
         <section role="region" class="view-body-inner">
           <ul data-type="list">
-            <li id="backupContacts">
+            <li>
               <h3 data-l10n-id="Backup">Backup</h3>
               <label>Backup Service</label>
               <span class="button icon icon-dialog">
                 <select name="backupServiceSelect">
                   <option value="fruux" selected>Fruux (default)</option>
-                  <option value="custom" data-l10n-id="custom">Custom</option>
+                  <option value="custom" data-l10n-id="custom.placeholder">Custom</option>
                 </select>
               </span>
-              <form id="backupServiceConfigForm">
+              <form>
                 <label>Service URL</label>
-                <input type="text" id="backupURL" placeholder="url" x-inputmode="verbatim"></input>
+                <input type="text" id="backupURL" placeholder="url" x-inputmode="verbatim" />
                 <label>Username</label>
-                <input type="text" id="backupIdentity" data-l10n-id="identityInput" placeholder="username" x-inputmode="verbatim"></input>
+                <input type="text" id="backupIdentity" data-l10n-id="identityInput" placeholder="username" x-inputmode="verbatim" />
                 <label>Password</label>
-                <input type="password" id="backupPassword" data-l10n-id="password" placeholder="password" value="" x-inputmode="verbatim"></input>
+                <input type="password" id="backupPassword" data-l10n-id="password" placeholder="password" value="" x-inputmode="verbatim" />
                 <div class="horizontal">
-                  <p data-l10n-id="showPassword">Show Password</p>
-                  <label class="pack-checkbox" for="backup_showPassword">
-                    <input type="checkbox" id="backup_showPassword"></input>
+                  <label class="pack-checkbox">
+                    <input type="checkbox" data-ignore name="backup_showPassword" />
                     <span></span>
+                    <p id="backup_showPassword" data-l10n-id="showPassword">Show Password</p>
+                  </label>
                 </div>
               </form>
             </li>
