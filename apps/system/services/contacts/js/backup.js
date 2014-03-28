@@ -147,8 +147,11 @@ var BackupService = {
     var oReq = new XMLHttpRequest({ mozSystem: true });
 
     function reqListener() {
-      console.log('contact pushed: ' + oReq.responseText);
-      // TODO: check for failures and retry if necessary
+      console.log('contact pushed: ' + oReq.status + ' ' + oReq.statusText);
+      if (oReq.status !== 204) { // TODO: support other 2xx status codes?
+        // TODO: put a limit of 5 attempts on pushing a single contact
+        self.upload(vcard);
+      }
     }
     oReq.onload = reqListener;
 
