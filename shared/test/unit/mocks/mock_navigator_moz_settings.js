@@ -168,7 +168,7 @@
     },
     get mRequests() {
       return requests;
-    }
+    },
   };
 
 })(window);

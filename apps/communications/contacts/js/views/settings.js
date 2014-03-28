@@ -64,13 +64,18 @@ contacts.Settings = (function() {
       app = evt.target.result;
     };
 
-    // Set the toggle switch to show whether sync is enabled
-    var reqEnabled = window.navigator.mozSettings.createLock()
-        .get(SYNC_ENABLED_PREF);
-    reqEnabled.onsuccess = function() {
-      syncEnabled = reqEnabled.result[SYNC_ENABLED_PREF];
-      updateOrderingUI();
-    };
+    // If there's a signed in user, backup is enabled
+    FxAccountsIACHelper.getAccounts(
+      function onsuccess(account) {
+        if (account && account.verified) {
+          syncEnabled = true;
+          updateOrderingUI();
+        }
+      },
+      function onerror(error) {
+        console.log("** error getting accounts: " + error.toString());
+      }
+    );
 
     // XXX prepopulate the backup settings card
     // with info for the current backup service
@@ -131,6 +136,8 @@ contacts.Settings = (function() {
     var configBackup = document.getElementById('submit-backup-settings');
     configBackup.addEventListener('click', onConfigBackup.bind(this));
 
+    // XXX we should only show backup config if there is a logged-in user with
+    // a verified account
     // show/hide password in backup config card
     backupPassword = document.getElementById('backupPassword');
     showBackupPassword = document.getElementById('backup_showPassword');
@@ -702,28 +709,45 @@ contacts.Settings = (function() {
     if (!app) {
       return;
     }
-    syncEnabled = !syncEnabled;
-    syncCheckBox.checked = syncEnabled;
-    // Tell the backup app to stop backing up contacts
-    app.connect('contacts-backup-settings').then(
-      function onConnectionAccepted(ports) {
-        ports.forEach(function(port) {
+    // The user can change the toggle state only if signed in
+    FxAccountsIACHelper.getAccounts(function onsuccess(account) {
+      if (account && account.verified) {
+        syncEnabled = !syncEnabled;
+        syncCheckBox.checked = syncEnabled;
+        // Tell the backup app to stop backing up contacts
+        app.connect('contacts-backup-settings').then(function (ports) {
+          ports.forEach(function(port) {
             port.postMessage({
               action: 'enable',
               enabled: syncEnabled
             });
+          });
         });
+      } else {
+        syncEnabled = false;
+        syncCheckBox.checked = syncEnabled;
       }
-    );
+    },
+    function onerror(error) {
+      console.log("** error getting accounts: " + error.toString());
+    });
   };
 
   var onConfigBackup = function onConfigBackup(evt) {
+    var provider = document.getElementById('backupProviderSelect').value;
+
     var data = {
       action: 'configure',
-      url: document.getElementById('backupURL').value,
-      username: document.getElementById('backupIdentity').value,
-      password: document.getElementById('backupPassword').value
+      provider: provider
     };
+
+    if (provider != 'default') {
+      // XXX we probably want to check that the settings are valid
+      data.url = document.getElementById('backupURL').value,
+      data.username = document.getElementById('backupIdentity').value,
+      data.password = document.getElementById('backupPassword').value
+    }
+
     app.connect('contacts-backup-settings').then(
       function onConnectionAccepted(ports) {
         ports.forEach(function(port) {
@@ -732,7 +756,6 @@ contacts.Settings = (function() {
       }
     );
     // leave the page
-    // XXX we probably want to check that the settings are valid
     settingsBackHandler();
   };
 

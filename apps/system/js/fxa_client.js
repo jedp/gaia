@@ -36,6 +36,8 @@ var FxAccountsClient = function FxAccountsClient() {
     event.initCustomEvent('mozFxAccountsContentEvent', true, true, details);
     window.dispatchEvent(event);
 
+    console.log('** dispatched content event: ' + JSON.stringify(details));
+
     eventCount++;
   };
 
@@ -82,6 +84,22 @@ var FxAccountsClient = function FxAccountsClient() {
     }, successCb, errorCb);
   };
 
+  // XXX I've opened bug 989442 to add this method
+  var getAssertion = function getAssertion(
+      audience, options, successCb, errorCb) {
+    if (typeof options == 'function') {
+      errorCb = successCb;
+      successCb = options;
+      options = {};
+    }
+
+    sendMessage({
+      method: 'getAssertion',
+      audience: audience,
+      options: options
+    });
+  };
+
   var logout = function logout(successCb, errorCb) {
     sendMessage({
       method: 'logout'
@@ -121,6 +139,7 @@ var FxAccountsClient = function FxAccountsClient() {
 
   return {
     'getAccounts': getAccounts,
+    'getAssertion': getAssertion,
     'logout': logout,
     'queryAccount': queryAccount,
     'signIn': signIn,

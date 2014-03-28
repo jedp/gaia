@@ -1,6 +1,16 @@
+/* global BackupService */
 
 // Exposes the ContactsBackupStorage object, which wraps an internal indexedDB
 // database for holding carddav config and credentials for the user.
+//
+// Schema:
+//
+// {fxa_id,
+//  provider,
+//  {provider1: {url, canProvision, username, password},
+//   provider2: {url, canProvision, username, password},
+//   ...}
+// }
 
 // Global db for this module
 var gdb = {};
@@ -22,7 +32,6 @@ var STORE_NAME = 'settings';
 
   var DB_NAME = 'services-contacts-backup';
   var VERSION = 1;
-  var DUMMY_FXA_ID = 'my-fxa-id';
 
   var req = window.indexedDB.open(DB_NAME, VERSION);
 
@@ -47,27 +56,33 @@ var STORE_NAME = 'settings';
       _db: db,
 
       // Save credentials for the current fxa user
-      save: function(data) {
-        data.fxa_id = DUMMY_FXA_ID;
+      //
+      // XXX this isn't so good because it blows away the previous settings.
+      // if we have default and custom, the user should be able to toggle
+      // between them, add more accounts, etc., without having previous
+      // settings clobbered.
+      save: function(data, onSuccess, onError) {
 
         var trans = gdb._db.transaction([STORE_NAME], "readwrite");
         trans.onerror = function(event) {
-          console.error("Transaction error: " + event.target.error.name);
+          onError(event.target.error);
         };
+
+        trans.oncomplete = onSuccess;
 
         var store = trans.objectStore(STORE_NAME);
         store.put(data);
       },
 
       // Load the credentials for the current fxa user
-      load: function(callback) {
+      load: function(fxa_id, onSuccess, onError) {
         var results = [];
         if (!gdb._db) {
           return callback(results);
         }
 
         var store = this._db.transaction(STORE_NAME).objectStore(STORE_NAME);
-        var range = store.openCursor(IDBKeyRange.only(DUMMY_FXA_ID));
+        var range = store.openCursor(IDBKeyRange.only(fxa_id));
 
         range.onsuccess = function(event) {
           var cursor = event.target.result;
@@ -77,8 +92,9 @@ var STORE_NAME = 'settings';
           }
 
           results = cursor.value;
-          return callback(results);
+          onSuccess(results);
         };
+        range.onerror = onError;
       }
     };
   }
@@ -86,11 +102,87 @@ var STORE_NAME = 'settings';
 
 // Public interface
 var ContactsBackupStorage = {
-  load: function(callback) {
-    gdb.load(callback);
+  load: function(fxa_id) {
+    var deferred = new Promise(function done(resolve, reject) {
+      gdb.load(fxa_id, resolve, reject);
+    });
+    return deferred;
   },
 
   save: function(data) {
-    gdb.save(data);
-  }
+    var deferred = new Promise(function done(resolve, reject) {
+      gdb.save(data, resolve, reject);
+    });
+    return deferred;
+  },
+
+  // Load the data for the current provider
+  getProviderProfile: function(fxa_id) {
+    return new Promise(function done(resolve, reject) {
+      this.load(fxa_id).then(
+        function (data) {
+          var profile = data.providers[data.provider] || null;
+          resolve(profile);
+        },
+        reject
+      );
+    }.bind(this));
+  },
+
+  // Update the profile of the currently-selected provider
+  updateProviderProfile: function(fxa_id, profile) {
+    var self = this;
+    return new Promise(function done(resolve, reject) {
+      self.load(fxa_id).then(
+        function(data) {
+          if (!data.providers) {
+            data.providers = {};
+          }
+          data.providers[data.provider] = profile;
+          self.save(data).then(resolve, reject);
+        },
+        reject
+      );
+    });
+  },
+
+  // Query the currently-selected provider
+  getProvider: function(fxa_id) {
+    return new Promise(function done(resolve, reject) {
+      this.load(fxa_id).then(
+        function(data) {
+          resolve(data.provider);
+        }
+      );
+    }.bind(this));
+  },
+
+  // Change the currently-selected provider
+  setProvider: function(fxa_id, provider) {
+    var self = this;
+    return new Promise(function done(resolve, reject) {
+      self.load(fxa_id).then(
+        function(data) {
+          data.provider = provider;
+          self.save(data).then(resolve, reject);
+        },
+        reject
+      );
+    });
+  },
+
+  // Update the settings for the given provider
+  setAndUpdateProvider: function(fxa_id, provider, profile) {
+    var self = this;
+    return new Promise(function done(resolve, reject) {
+      self.load(fxa_id).then(
+        function(data) {
+          data.provider = provider;
+          data.providers[provider] = profile;
+          self.save(data).then(resolve, reject);
+        },
+        reject
+      );
+    });
+  },
 };

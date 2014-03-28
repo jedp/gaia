@@ -162,6 +162,13 @@ var FxAccountsManager = {
           });
         }.bind(this));
         break;
+      case 'getAssertion':
+        FxAccountsManager.sendPortMessage({
+          eventName: message.eventName,
+          audience: message.audience,
+          options: message.options
+        });
+        break;
       case 'onlogin':
       case 'onverifiedlogin':
       case 'onlogout':
