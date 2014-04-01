@@ -257,6 +257,9 @@ BackupService = {
   },
 
   backup: function() {
+    return;
+
+    /*
     var contactID = this.queue.shift();
     dump("FF backup this one: " + contactID + "\n");
     var self = this;
@@ -280,6 +283,7 @@ BackupService = {
         self.process(1000);
       }
     );
+    */
   },
 };
 

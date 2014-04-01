@@ -111,7 +111,6 @@ mockXHR.prototype = {
   },
 };
 
-
 function mockFxAccountsClient() {
 }
 mockFxAccountsClient.prototype = {
@@ -127,10 +126,62 @@ mockFxAccountsClient.prototype = {
   }
 };
 
+function MockRequest() {
+  this.onsuccess = function() {};
+  this.onerror = function() {};
+}
+MockRequest.prototype = {
+  done: function(value) {
+    if (value.error) {
+      return this.onerror(value);
+    }
+    return this.onsuccess(value);
+  }
+};
+
+function MockMozContacts() {
+  this.id = 1;
+  this.contacts = {};
+  this.callbacks = [];
+}
+MockMozContacts.prototype = {
+  find: function(options) {
+    // options are always going to be to find by id
+    var req = new MockRequest();
+
+    setTimeout(function() {
+      var result = {
+        target: {
+          result: this.contacts[options.contactID]
+        }
+      };
+      req.done(result);
+    }, 0);
+  },
+
+  save: function(contact) {
+    contact.contactID = this.id++;
+    this.contacts[contact.contactID] = contact;
+
+    this.callbacks.forEach(function(callback) {
+      callback({contactID: contact.contactID});
+    });
+  },
+
+  set oncontactchange(callback) {
+    this.callbacks.push(callback);
+  },
+
+  get oncontactchange() {
+    // make jshint happy
+  },
+};
+
 suite('services/contacts', function() {
   var realXHR;
   var realFxAccountsClient;
   var realMozSettings;
+  var realMozContacts;
 
   suiteSetup(function(done) {
     realMozSettings = navigator.mozSettings;
@@ -141,6 +192,9 @@ suite('services/contacts', function() {
 
     realFxAccountsClient = FxAccountsClient;
     FxAccountsClient = new mockFxAccountsClient();
+
+    realMozContacts = navigator.mozContacts;
+    navigator.mozContacts = new MockMozContacts();
 
     // populate mock settings
     var lock = navigator.mozSettings.createLock(BACKUP_PROVIDERS_PREF);
@@ -295,10 +349,18 @@ suite('services/contacts', function() {
     });
   });
 
-  test('update contact', function() {
-    var contact = new navigator.mozContact({
+  test('contact change triggers upload', function(done) {
+    var contact = {
       name: ['The Queeeeeen of France!'],
-    });
+    };
+
+    navigator.mozContacts.oncontactchange = function(event) {
+      done(function() {
+        assert.ok(!!event.contactID);
+      });
+    };
+
+    navigator.mozContacts.save(contact);
 
   });
 });
