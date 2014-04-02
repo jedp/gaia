@@ -6,6 +6,7 @@
  
 requireApp('system/shared/test/unit/mocks/mock_navigator_moz_settings.js');
 requireApp('system/services/contacts/js/storage.js');
+requireApp('system/services/contacts/js/vcard.js');
 requireApp('system/js/fxa_client.js');
 requireApp('/shared/js/fxa_iac_client.js');
 
@@ -59,6 +60,8 @@ function mockXHR(properties) {
   this.data = null;
   this.response = null;
   this.basicAuth = null;
+  this.status = 204; // yeah ...
+  this.statusText = 'that worked';
   return this;
 }
 mockXHR.prototype = {
@@ -97,17 +100,14 @@ mockXHR.prototype = {
   },
 
   send: function(data) {
-    this.data = JSON.parse(data);
+    try {
+      this.data = JSON.parse(data);
+    } catch(notJSON) {
+      this.data = data;
+    }
     this.onload(this.responseText);
 
-    // XXX temporary - url is likely to change
-    if (this.url.match('sample.vcf')) {
-      observer.observe(url);
-    }
-
-    if (this.url.match('browserid/login')) {
-
-    }
+    observer.observe(data);
   },
 };
 
@@ -152,11 +152,13 @@ MockMozContacts.prototype = {
     setTimeout(function() {
       var result = {
         target: {
-          result: this.contacts[options.contactID]
+          result: [this.contacts[options.filterValue]]
         }
       };
       req.done(result);
-    }, 0);
+    }.bind(this), 0);
+
+    return req;
   },
 
   save: function(contact) {
@@ -258,6 +260,29 @@ suite('services/contacts', function() {
     });
   });
 
+  test('mock mozContacts', function(done) {
+    var contact = {
+      name: ['The Queeeeeen of France!'],
+    };
+
+    var testMozContacts = new MockMozContacts();
+    testMozContacts.oncontactchange = function(event) {
+      var options = {
+        filterBy: ['id'],
+        filterOp: 'equals',
+        filterValue: 1
+      };
+      var req = testMozContacts.find(options);
+      req.onsuccess = function(event) {
+        done(function() {
+          assert.equal('The Queeeeeen of France!', event.target.result[0].name[0]);
+        });
+      };
+    };
+
+    testMozContacts.save(contact);
+  });
+
   // Provision an identity 
   test('identity provisioning', function(done) {
     BackupService.provision().then(
@@ -349,19 +374,33 @@ suite('services/contacts', function() {
     });
   });
 
-  test('contact change triggers upload', function(done) {
-    var contact = {
-      name: ['The Queeeeeen of France!'],
-    };
+  // Saving navigator.mozContact triggers vcard upload.
+  // Use the default account, which can provision for username and password
+  test('contact change triggers vcard upload', function(done) {
+    FxAccountsClient.getAccounts(function(account) {
+      ContactsBackupStorage
+        .setProvider(account.accountId, 'default').then(function() {
+          var contact = {
+            name: ['Prunella']
+          };
 
-    navigator.mozContacts.oncontactchange = function(event) {
-      done(function() {
-        assert.ok(!!event.contactID);
-      });
-    };
+          // When the outgoing xhr contains the vcard data, we have won.
+          function onResponse(data) {
+            if (data.match('FN:Prunella')) {
+              done(function() {
+                assert.ok(true);
+              });
+            }
+          }
 
-    navigator.mozContacts.save(contact);
+          // Spy on xhr
+          observer.subscribe(onResponse);
 
+          // Save the contact; onResponse will hear that the vcard was sent
+          navigator.mozContacts.save(contact);
+        }
+      );
+    });
   });
 });
 

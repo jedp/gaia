@@ -179,41 +179,6 @@ BackupService = {
     });
   },
 
-  customProvider: function (self, cb) {
-    var url = localStorage.getItem('backup-url');
-    var username = localStorage.getItem('backup-username');
-    var password = localStorage.getItem('backup-password');
-
-    // TODO: stop overridding these prefs
-    url = 'http://localhost/owncloud/remote.php/carddav/addressbooks/francois/contacts';
-    username = 'francois';
-    password = 'francois';
-
-    setTimeout(function () {
-      cb(url, username, password);
-    }, 0);
-  },
-
-  retryFruuxProvisioning: function () {
-    var self = this;
-    if (self.provisioningAttempts === self.MAX_PROVISIONING_ATTEMPTS) {
-      console.error("** provisioning failed. giving up.");
-      return;
-    }
-    self.provisioningAttempts += 1;
-    // Try fruux provisioning again
-    console.log('Provisioning failed, will try again in 1 second.');
-    setTimeout(function() {
-      self.provision();
-    }, 1000);
-  },
-
-  defaultProvider: function (self, cb) {
-    console.log('Getting new fruux credentials...');
-    self.fruuxCallback = cb;
-    navigator.mozId.request();
-  },
-
   upload: function(vcard) {
     var self = this;
     if (!self.enabled) {
@@ -222,6 +187,10 @@ BackupService = {
 
     this.getCredentials().then(
       function success(creds) {
+        if (!creds.username || !creds.password || !creds.url) {
+          dump("** no creds!\n");
+          return;
+        }
         var oReq = new XMLHttpRequest({ mozSystem: true });
 
         function reqListener() {
@@ -233,22 +202,10 @@ BackupService = {
         }
         oReq.onload = reqListener;
 
-        var provider = localStorage.getItem('backup-provider');
-        provider = 0; // TODO: stop overriding this pref
-        var providerFunction;
-        if (0 === provider) {
-          providerFunction = self.defaultProvider;
-        } else if (1 === provider) {
-          providerFunction = self.customProvider;
-        }
-
-        providerFunction(self, function (url, username, password) {
-          var fullURL = url + '/sample.vcf'; // TODO: generate unique name for the vcard
-          console.log('Pushing contacts to: ' + fullURL + ' using ' + username + ':' + password);
-          oReq.open('PUT', fullURL, true, username, password);
-          oReq.setRequestHeader('Content-Type', 'text/vcard; charset=utf-8');
-          oReq.send(vcard);
-        });
+        var fullURL = creds.url + '/sample.vcf'; // TODO: generate unique name for the vcard
+        oReq.open('PUT', fullURL, true, creds.username, creds.password);
+        oReq.setRequestHeader('Content-Type', 'text/vcard; charset=utf-8');
+        oReq.send(vcard);
       },
       function rejected(error) {
         console.error("** awwww ... " + error.toString());
@@ -257,11 +214,8 @@ BackupService = {
   },
 
   backup: function() {
-    return;
-
-    /*
     var contactID = this.queue.shift();
-    dump("FF backup this one: " + contactID + "\n");
+
     var self = this;
     if (!contactID) {
       return;
@@ -271,7 +225,6 @@ BackupService = {
       function resolve(result) {
         try {
           var vcard = new MozContactTranslator(result).toString();
-          console.log("** got something: " + vcard);
           self.upload(vcard);
         } catch(err) {
           console.error(err);
@@ -283,7 +236,6 @@ BackupService = {
         self.process(1000);
       }
     );
-    */
   },
 };
 
