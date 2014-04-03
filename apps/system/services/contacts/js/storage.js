@@ -15,6 +15,7 @@
 // Global db for this module
 var gdb = {};
 var STORE_NAME = 'settings';
+var CONTACTS_PROVIDERS = 'identity.services.contacts.providers';
 
 // Schema:
 // {fxa_id:    fxa id of currently signed-in user,
@@ -43,7 +44,6 @@ var STORE_NAME = 'settings';
 
   req.onerror = function() {
     console.error("indexedDB error: " + req.errorCode);
-    callback(req.errorCode);
   };
 
   req.onsuccess = function(event) {
@@ -78,20 +78,36 @@ var STORE_NAME = 'settings';
       load: function(fxa_id, onSuccess, onError) {
         var results = [];
         if (!gdb._db) {
-          return callback(results);
+          return onError(new Error("No database"));
         }
 
         var store = this._db.transaction(STORE_NAME).objectStore(STORE_NAME);
         var range = store.openCursor(IDBKeyRange.only(fxa_id));
 
         range.onsuccess = function(event) {
-          var cursor = event.target.result;
-
-          if (!cursor) {
-            return callback(results);
+          if (!event.target.result) {
+            console.log("** no cursor, so storing defaults");
+            var req = navigator.mozSettings.createLock()
+                      .get(CONTACTS_PROVIDERS);
+            req.onsuccess = function() {
+              var data = req.result[CONTACTS_PROVIDERS];
+              data.fxa_id = fxa_id;
+              console.log("** save: " + JSON.stringify(data));
+              gdb.save(data,
+                function onsuccess() {
+                  return onSuccess(data);
+                },
+                function onerror() {
+                  return onError(new Error("No cursor"));
+                }
+              );
+            };
+            req.onerror = onError;
           }
 
+          var cursor = event.target.result;
           results = cursor.value;
+          console.log("** load returning: " + JSON.stringify(results));
           onSuccess(results);
         };
         range.onerror = onError;

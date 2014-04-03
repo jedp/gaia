@@ -36,8 +36,6 @@ var FxAccountsClient = function FxAccountsClient() {
     event.initCustomEvent('mozFxAccountsContentEvent', true, true, details);
     window.dispatchEvent(event);
 
-    console.log('** dispatched content event: ' + JSON.stringify(details));
-
     eventCount++;
   };
 
@@ -45,7 +43,7 @@ var FxAccountsClient = function FxAccountsClient() {
     var message = event.detail;
 
     if (!message.id) {
-      console.warn('Got mozFxAccountsChromeEvent with no id');
+      console.error('Got mozFxAccountsChromeEvent with no id');
       return;
     }
 
@@ -97,7 +95,7 @@ var FxAccountsClient = function FxAccountsClient() {
       method: 'getAssertion',
       audience: audience,
       options: options
-    });
+    }, successCb, errorCb);
   };
 
   var logout = function logout(successCb, errorCb) {

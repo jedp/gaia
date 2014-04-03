@@ -2,7 +2,6 @@
 'use strict';
 // Firefox Accounts IAC client
 
-console.log("** you're importing fxa_ica_helper");
 var FxAccountsIACHelper = function FxAccountsIACHelper() {
 
   var DEFAULT_CONNECTION_STRING = 'fxa-mgmt';
@@ -83,13 +82,11 @@ var FxAccountsIACHelper = function FxAccountsIACHelper() {
         return;
       }
 
-      console.log("** fxa iac: " + message.methodName + " -> " + JSON.stringify(message.data));
-
       var cbs, cb;
       if (message.methodName) {
         cbs = callbacks[message.methodName];
         if (!cbs || !cbs.length) {
-          console.warn('No callbacks for method ' + message.methodName);
+          console.error('No callbacks for method ' + message.methodName);
           return;
         }
 
@@ -191,7 +188,6 @@ var FxAccountsIACHelper = function FxAccountsIACHelper() {
   };
 
   var getAccounts = function getAccounts(successCb, errorCb) {
-    console.log("** fxa iac: get accounts");
     sendMessage({
       'name': 'getAccounts'
     }, successCb, errorCb);
@@ -204,7 +200,6 @@ var FxAccountsIACHelper = function FxAccountsIACHelper() {
       successCb = options;
       options = {};
     }
-    console.log("** get assertion for : " + audience);
     sendMessage({
       name: 'getAssertion',
       audience: audience,

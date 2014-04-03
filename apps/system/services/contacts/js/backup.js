@@ -107,9 +107,7 @@ BackupService = {
                 xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
                 xhr.send(JSON.stringify({ assertion: assertion }));
               },
-              function onerror(error) {
-                reject(error);
-              }
+              reject
             );
           }, reject);
         }
@@ -197,7 +195,8 @@ BackupService = {
           console.log('contact pushed: ' + oReq.status + ' ' + oReq.statusText);
           if (oReq.status !== 204) { // TODO: support other 2xx status codes?
             // TODO: put a limit of 5 attempts on pushing a single contact
-            self.upload(vcard);
+            // self.upload(vcard);
+            console.log("TODO: retry!");
           }
         }
         oReq.onload = reqListener;
@@ -225,6 +224,7 @@ BackupService = {
       function resolve(result) {
         try {
           var vcard = new MozContactTranslator(result).toString();
+          console.log("** ok upload this: " + vcard);
           self.upload(vcard);
         } catch(err) {
           console.error(err);
