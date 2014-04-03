@@ -197,7 +197,8 @@ BackupService = {
           console.log('contact pushed: ' + oReq.status + ' ' + oReq.statusText);
           if (oReq.status !== 204) { // TODO: support other 2xx status codes?
             // TODO: put a limit of 5 attempts on pushing a single contact
-            self.upload(vcard);
+            // self.upload(vcard);
+            console.log("TODO: retry!");
           }
         }
         oReq.onload = reqListener;
@@ -205,6 +206,7 @@ BackupService = {
         var fullURL = creds.url + '/sample.vcf'; // TODO: generate unique name for the vcard
         oReq.open('PUT', fullURL, true, creds.username, creds.password);
         oReq.setRequestHeader('Content-Type', 'text/vcard; charset=utf-8');
+        console.log("Sending to " + fullURL);
         oReq.send(vcard);
       },
       function rejected(error) {

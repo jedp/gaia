@@ -7,6 +7,7 @@
 /* global ContactsSDExport */
 /* global ContactsSIMExport */
 /* global fb */
+/* global FxAccountsIACHelper */
 /* global IccHandler */
 /* global LazyLoader */
 /* global navigationStack */
@@ -17,7 +18,6 @@
 /* global VCFReader */
 
 var contacts = window.contacts || {};
-var SYNC_ENABLED_PREF = 'identity.services.contacts.enabled';
 
 /***
  This class handles all the activity regarding
@@ -33,6 +33,7 @@ contacts.Settings = (function() {
     orderByLastName,
     syncCheckBox,
     syncEnabled = false,
+    backupContacts,
     backupPassword,
     showBackupPassword,
     importSettingsPanel,
@@ -73,7 +74,7 @@ contacts.Settings = (function() {
         }
       },
       function onerror(error) {
-        console.log("** error getting accounts: " + error.toString());
+        console.log('** error getting accounts: ' + error.toString());
       }
     );
 
@@ -267,7 +268,7 @@ contacts.Settings = (function() {
       importSettingsPanel.classList.add('backup');
       updateImportTitle('backupContactsTitle');
       navigationHandler.go('backup-settings', 'right-left');
-  };
+  }
 
   // Given an event, select wich should be the targeted
   // import/export source
@@ -707,14 +708,16 @@ contacts.Settings = (function() {
 
   var onSyncChange = function onSyncChange(evt) {
     if (!app) {
+      console.error('Unable to get handle on current app!');
       return;
     }
     // The user can change the toggle state only if signed in
     FxAccountsIACHelper.getAccounts(function onsuccess(account) {
+      console.log('Current account: ' + JSON.stringify(account));
       if (account && account.verified) {
         syncEnabled = !syncEnabled;
         syncCheckBox.checked = syncEnabled;
-        // Tell the backup app to stop backing up contacts
+        // Tell the backup app to start or stop backing up contacts
         app.connect('contacts-backup-settings').then(function (ports) {
           ports.forEach(function(port) {
             port.postMessage({
@@ -729,7 +732,7 @@ contacts.Settings = (function() {
       }
     },
     function onerror(error) {
-      console.log("** error getting accounts: " + error.toString());
+      console.log('** error getting accounts: ' + error.toString());
     });
   };
 
@@ -743,9 +746,9 @@ contacts.Settings = (function() {
 
     if (provider != 'default') {
       // XXX we probably want to check that the settings are valid
-      data.url = document.getElementById('backupURL').value,
-      data.username = document.getElementById('backupIdentity').value,
-      data.password = document.getElementById('backupPassword').value
+      data.url = document.getElementById('backupURL').value;
+      data.username = document.getElementById('backupIdentity').value;
+      data.password = document.getElementById('backupPassword').value;
     }
 
     app.connect('contacts-backup-settings').then(
