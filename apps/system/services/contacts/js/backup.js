@@ -88,21 +88,34 @@ BackupService = {
               function onsuccess(assertion) {
                 var xhr = new XMLHttpRequest({ mozSystem: true });
 
-                xhr.onload = function(responseText) {
-                  self.receiveProvisionedCreds(responseText, provider).then(
-                    function(creds) {
-                      // Must have fxa_id on creds for storage
-                      creds.fxa_id = account.accountId;
-                      ContactsBackupStorage.updateProviderProfile(fxa_id, creds).then(
-                        function() { 
-                          resolve(creds); 
+                xhr.onload = function() {
+                  switch (xhr.status) {
+                    case 200:
+                      var responseText = this.responseText;
+                      self.receiveProvisionedCreds(responseText, provider).then(
+                        function(creds) {
+                          // Must have fxa_id on creds for storage
+                          creds.fxa_id = account.accountId;
+                          ContactsBackupStorage.updateProviderProfile(fxa_id, creds).then(
+                            function() {
+                              resolve(creds);
+                            },
+                            reject
+                          );
                         },
                         reject
                       );
-                    },
-                    reject
-                  );
+                      break;
+                    default:
+                      console.error("Non-200 response from provider: " + xhr.status);
+                      break;
+                  }
                 };
+
+                xhr.onerror = function(error) {
+                  console.error('!! xhr error: ' + error.toString());
+                };
+
                 xhr.open('POST', provider.url + '/browserid/login', true);
                 xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
                 xhr.send(JSON.stringify({ assertion: assertion }));
@@ -122,6 +135,7 @@ BackupService = {
       try {
         response = JSON.parse(responseText);
       } catch(error) {
+        console.error("provisioned creds: " + error.toString());
         return reject(error);
       }
 
