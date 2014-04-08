@@ -217,8 +217,8 @@ BackupService = {
         function reqListener() {
           console.log('contact pushed: ' + oReq.status + ' ' + oReq.statusText);
           if (oReq.status !== 204) { // TODO: support other 2xx status codes?
-            console.log("TODO: retry!"); // TODO: retry pushing the contact
-            // self.upload(vcard);
+            console.log("Contact upload failed, will retry.");
+            self.upload(contactId, vcard);
             // TODO: put a limit of 5 attempts on pushing a single contact
           }
         }
