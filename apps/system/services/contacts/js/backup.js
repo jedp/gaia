@@ -200,7 +200,7 @@ BackupService = {
     });
   },
 
-  upload: function(vcard) {
+  upload: function(contactId, vcard) {
     var self = this;
     if (!self.enabled) {
       return;
@@ -224,7 +224,7 @@ BackupService = {
         }
         oReq.onload = reqListener;
 
-        var fullURL = creds.url + '/sample.vcf'; // TODO: generate unique name for the vcard
+        var fullURL = creds.url + '/' + contactId + '.vcf';
         oReq.open('PUT', fullURL, true, creds.username, creds.password);
         oReq.setRequestHeader('Content-Type', 'text/vcard; charset=utf-8');
         oReq.send(vcard);
@@ -248,7 +248,7 @@ BackupService = {
         try {
           var vcard = new MozContactTranslator(result).toString();
           console.log("** ok upload this: " + vcard);
-          self.upload(vcard);
+          self.upload(result.id, vcard);
         } catch(err) {
           console.error(err);
         }
