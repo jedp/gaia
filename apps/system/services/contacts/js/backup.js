@@ -78,6 +78,7 @@ BackupService = {
   // Provision an identity from a provider
   provision: function() {
     var self = this;
+    console.log('Provisioning account...');
     return new Promise(function done(resolve, reject) {
 
       FxAccountsClient.getAccounts(function(account) {
@@ -86,6 +87,7 @@ BackupService = {
           self.getCurrentProvider(account.accountId).then(function(provider) {
             FxAccountsClient.getAssertion(provider.url, {},
               function onsuccess(assertion) {
+                console.log('Got FxA assertion: ' + assertion);
                 var xhr = new XMLHttpRequest({ mozSystem: true });
 
                 xhr.onload = function() {
@@ -148,6 +150,7 @@ BackupService = {
       // TODO: discover the addressbook URL 
       // (see Discovery on http://sabre.io/dav/building-a-carddav-client/)
       var url = provider.url + response.links['addressbook-home-set'] + 'default';
+      console.log('Got fruux creds: ' + response.basicAuth.userName + ':' + response.basicAuth.password);
 
       resolve({
         url: url,
@@ -180,8 +183,11 @@ BackupService = {
         if (account && account.verified) {
           ContactsBackupStorage.getProviderProfile(account.accountId).then(
             function loaded(creds) {
+              console.log('Got creds: ' + JSON.stringify(creds));
               if ((!creds.url || !creds.username || !creds.password) && creds.canProvision) {
                 return self.provision().then(resolve, reject);
+              } else {
+                console.log('No need to provision an account.');
               }
               return resolve(creds);
             },
