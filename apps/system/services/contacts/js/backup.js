@@ -10,7 +10,7 @@ var BackupService;
 'use strict';
 
 BackupService = {
-  enabled: true,    // we'll set this with a pref later
+  enabled: true,    // TODO: set this with a pref
   queue: [],
   initialized: false,
   fruuxCallback: undefined,
@@ -107,6 +107,8 @@ BackupService = {
                       );
                       break;
                     default:
+                      // TODO: need to retry provisioning
+                      // TODO: only attempt provisioning 5 times
                       console.error("Non-200 response from provider: " + xhr.status);
                       break;
                   }
@@ -173,6 +175,7 @@ BackupService = {
   getCredentials: function() {
     var self = this;
     return new Promise(function done(resolve, reject) {
+      // TODO: skip Firefox Accounts stuff when using custom CardDAV server
       FxAccountsClient.getAccounts(function(account) {
         if (account && account.verified) {
           ContactsBackupStorage.getProviderProfile(account.accountId).then(
@@ -208,9 +211,9 @@ BackupService = {
         function reqListener() {
           console.log('contact pushed: ' + oReq.status + ' ' + oReq.statusText);
           if (oReq.status !== 204) { // TODO: support other 2xx status codes?
-            // TODO: put a limit of 5 attempts on pushing a single contact
+            console.log("TODO: retry!"); // TODO: retry pushing the contact
             // self.upload(vcard);
-            console.log("TODO: retry!");
+            // TODO: put a limit of 5 attempts on pushing a single contact
           }
         }
         oReq.onload = reqListener;
