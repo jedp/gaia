@@ -10,7 +10,7 @@ var BackupService;
 'use strict';
 
 BackupService = {
-  enabled: true,    // we'll set this with a pref later
+  enabled: true,    // TODO: set this with a pref
   queue: [],
   initialized: false,
   fruuxCallback: undefined,
@@ -78,6 +78,7 @@ BackupService = {
   // Provision an identity from a provider
   provision: function() {
     var self = this;
+    console.log('Provisioning account...');
     return new Promise(function done(resolve, reject) {
 
       FxAccountsClient.getAccounts(function(account) {
@@ -86,6 +87,7 @@ BackupService = {
           self.getCurrentProvider(account.accountId).then(function(provider) {
             FxAccountsClient.getAssertion(provider.url, {},
               function onsuccess(assertion) {
+                console.log('Got FxA assertion: ' + assertion);
                 var xhr = new XMLHttpRequest({ mozSystem: true });
 
                 xhr.onload = function() {
@@ -107,6 +109,8 @@ BackupService = {
                       );
                       break;
                     default:
+                      // TODO: need to retry provisioning
+                      // TODO: only attempt provisioning 5 times
                       console.error("Non-200 response from provider: " + xhr.status);
                       break;
                   }
@@ -146,6 +150,7 @@ BackupService = {
       // TODO: discover the addressbook URL 
       // (see Discovery on http://sabre.io/dav/building-a-carddav-client/)
       var url = provider.url + response.links['addressbook-home-set'] + 'default';
+      console.log('Got fruux creds: ' + response.basicAuth.userName + ':' + response.basicAuth.password);
 
       resolve({
         url: url,
@@ -173,12 +178,16 @@ BackupService = {
   getCredentials: function() {
     var self = this;
     return new Promise(function done(resolve, reject) {
+      // TODO: skip Firefox Accounts stuff when using custom CardDAV server
       FxAccountsClient.getAccounts(function(account) {
         if (account && account.verified) {
           ContactsBackupStorage.getProviderProfile(account.accountId).then(
             function loaded(creds) {
+              console.log('Got creds: ' + JSON.stringify(creds));
               if ((!creds.url || !creds.username || !creds.password) && creds.canProvision) {
                 return self.provision().then(resolve, reject);
+              } else {
+                console.log('No need to provision an account.');
               }
               return resolve(creds);
             },
@@ -191,7 +200,7 @@ BackupService = {
     });
   },
 
-  upload: function(vcard) {
+  upload: function(contactId, vcard) {
     var self = this;
     if (!self.enabled) {
       return;
@@ -208,14 +217,14 @@ BackupService = {
         function reqListener() {
           console.log('contact pushed: ' + oReq.status + ' ' + oReq.statusText);
           if (oReq.status !== 204) { // TODO: support other 2xx status codes?
+            console.log("Contact upload failed, will retry.");
+            self.upload(contactId, vcard);
             // TODO: put a limit of 5 attempts on pushing a single contact
-            // self.upload(vcard);
-            console.log("TODO: retry!");
           }
         }
         oReq.onload = reqListener;
 
-        var fullURL = creds.url + '/sample.vcf'; // TODO: generate unique name for the vcard
+        var fullURL = creds.url + '/' + contactId + '.vcf';
         oReq.open('PUT', fullURL, true, creds.username, creds.password);
         oReq.setRequestHeader('Content-Type', 'text/vcard; charset=utf-8');
         oReq.send(vcard);
@@ -239,7 +248,7 @@ BackupService = {
         try {
           var vcard = new MozContactTranslator(result).toString();
           console.log("** ok upload this: " + vcard);
-          self.upload(vcard);
+          self.upload(result.id, vcard);
         } catch(err) {
           console.error(err);
         }
