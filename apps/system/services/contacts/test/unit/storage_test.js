@@ -2,7 +2,12 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-//requireApp('system/shared/test/unit/mocks/mock_navigator_moz_settings.js');
+mocha.globals([
+  'gdb',
+  'STORE_NAME',
+  'CONTACTS_PROVIDERS',
+  'ContactsBackupStorage',
+]);
 
 suite('services/contats', function() {
   suiteSetup(function(done) {

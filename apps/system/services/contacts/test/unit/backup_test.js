@@ -3,12 +3,17 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 /* global BackupService */
- 
+
+mocha.globals([
+  'BackupService',
+]);
+
 requireApp('system/shared/test/unit/mocks/mock_navigator_moz_settings.js');
-requireApp('system/services/contacts/js/storage.js');
-requireApp('system/services/contacts/js/vcard.js');
 requireApp('system/js/fxa_client.js');
 requireApp('/shared/js/fxa_iac_client.js');
+requireApp('system/services/contacts/js/request.js');
+requireApp('system/services/contacts/js/storage.js');
+requireApp('system/services/contacts/js/vcard.js');
 
 var BACKUP_PROVIDERS_PREF = 'identity.services.contacts.providers';
 var DEFAULT_PROVIDERS = {
@@ -257,6 +262,20 @@ suite('services/contacts', function() {
           });
         }
       );
+    });
+  });
+
+  // XHR Request - PUT
+  test('Request PUT', function(done) {
+    var creds = {username: 'Queen Anne', password: '123456'};
+    var request = new Request('https://example.org', creds);
+    request.put('some data').then(function(result) {
+      done(function() {
+        assert.equal('PUT', request.xhr.method, 'Request method');
+        assert.equal('some data', request.xhr.data, 'XHR data');
+        assert.equal('Queen Anne', request.creds.username, 'Username');
+        assert.equal('123456', request.creds.password, 'Password');
+      });
     });
   });
 

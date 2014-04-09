@@ -3,13 +3,11 @@
 /* exported BackupService */
 /* global navigator, FxAccountsClient */
 
-var BackupService;
-
-(function() {
+(function(exports) {
 
 'use strict';
 
-BackupService = {
+var BackupService = {
   enabled: true,    // TODO: set this with a pref
   queue: [],
   initialized: false,
@@ -43,7 +41,7 @@ BackupService = {
           };
         },
         function(error) {
-          dump("** aw, snap: " + error.toString() + "\n");
+          dump('** aw, snap: ' + error.toString() + '\n');
           reject(error);
         }
       );
@@ -79,84 +77,76 @@ BackupService = {
   provision: function() {
     var self = this;
     console.log('Provisioning account...');
-    return new Promise(function done(resolve, reject) {
 
+    return new Promise(function (resolve, reject) {
       FxAccountsClient.getAccounts(function(account) {
-        var fxa_id = account.accountId;
         if (account && account.verified) {
           self.getCurrentProvider(account.accountId).then(function(provider) {
             FxAccountsClient.getAssertion(provider.url, {},
-              function onsuccess(assertion) {
+              function (assertion) {
                 console.log('Got FxA assertion: ' + assertion);
-                var xhr = new XMLHttpRequest({ mozSystem: true });
 
-                xhr.onload = function() {
-                  switch (xhr.status) {
-                    case 200:
-                      var responseText = this.responseText;
-                      self.receiveProvisionedCreds(responseText, provider).then(
-                        function(creds) {
-                          // Must have fxa_id on creds for storage
-                          creds.fxa_id = account.accountId;
-                          ContactsBackupStorage.updateProviderProfile(fxa_id, creds).then(
-                            function() {
-                              resolve(creds);
-                            },
-                            reject
-                          );
-                        },
-                        reject
-                      );
-                      break;
-                    default:
-                      // TODO: need to retry provisioning
-                      // TODO: only attempt provisioning 5 times
-                      console.error("Non-200 response from provider: " + xhr.status);
-                      break;
-                  }
-                };
+                var request = new Request(provider.url + '/browserid/login');
+                request.post({assertion: assertion}).then(
+                  function success(result) {
+                    switch (result.status) {
+                      case 200:
+                      case 201:
+                      case 204:
+                        resolve(self.receiveProvisionedCreds(
+                            account.accountId, result.responseText, provider));
+                        break;
 
-                xhr.onerror = function(error) {
-                  console.error('!! xhr error: ' + error.toString());
-                };
-
-                xhr.open('POST', provider.url + '/browserid/login', true);
-                xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
-                xhr.send(JSON.stringify({ assertion: assertion }));
-              },
-              reject
-            );
-          }, reject);
+                      default:
+                        reject(result.statusText);
+                        break;
+                    }
+                  });
+              });
+          });
         }
       });
     });
   },
 
   // return promise
-  receiveProvisionedCreds: function (responseText, provider) {
+  receiveProvisionedCreds: function (fxaId, responseText, provider) {
     return new Promise(function done(resolve, reject) {
       var response;
       try {
         response = JSON.parse(responseText);
       } catch(error) {
-        console.error("provisioned creds: " + error.toString());
+        console.log('could not parse: ' + responseText);
+        console.error('provisioned creds: ' + error.toString());
         return reject(error);
       }
 
       if (!response.links || !response.basicAuth) {
-        return reject(new Error("Response did not include links and basicAuth creds"));
+        return reject(new Error('Response did not include links and basicAuth creds'));
       }
 
       // TODO: discover the addressbook URL 
       // (see Discovery on http://sabre.io/dav/building-a-carddav-client/)
       var url = provider.url + response.links['addressbook-home-set'] + 'default';
-      console.log('Got fruux creds: ' + response.basicAuth.userName + ':' + response.basicAuth.password);
+      console.log('provisioned creds: ' +
+        response.basicAuth.userName + ':' + response.basicAuth.password);
 
-      resolve({
+      var creds = {
+        fxa_id: fxaId,
         url: url,
         username: response.basicAuth.userName,
         password: response.basicAuth.password
-      });
+      };
+
+      // Save credentials and return them
+      console.log("save them");
+      ContactsBackupStorage.updateProviderProfile(fxaId, creds).then(
+        function() {
+          console.log("saved creds");
+          resolve(creds);
+        }
+      );
+
     }.bind(this));
   },
 
@@ -194,13 +184,13 @@ BackupService = {
             reject
           );
         } else {
-          return reject(new Error("No user with verified account signed in"));
+          return reject(new Error('No user with verified account signed in'));
         }
       });
     });
   },
 
-  upload: function(contactId, vcard) {
+  upload: function(contactId, vcard, tryingAgain) {
     var self = this;
     if (!self.enabled) {
       return;
@@ -209,28 +199,31 @@ BackupService = {
     this.getCredentials().then(
       function success(creds) {
         if (!creds.username || !creds.password || !creds.url) {
-          dump("** no creds!\n");
+          console.error('no creds!');
           return;
         }
-        var oReq = new XMLHttpRequest({ mozSystem: true });
-
-        function reqListener() {
-          console.log('contact pushed: ' + oReq.status + ' ' + oReq.statusText);
-          if (oReq.status !== 204) { // TODO: support other 2xx status codes?
-            console.log("Contact upload failed, will retry.");
-            self.upload(contactId, vcard);
-            // TODO: put a limit of 5 attempts on pushing a single contact
+        var url = creds.url + '/' + contactId + '.vcf';
+        var request = new Request(url, creds);
+        request.put(vcard).then(
+          function onsuccess(result) {
+            console.log('contact pushed: ' + result.statusText);
+            if (result.status !== 204) {
+              // on 401, provision and try again
+              console.log('got a ' + result.status + ' - will retry');
+              // TODO: put a limit of 5 attempts on pushing a single contact
+              //self.upload(contactId, vcard, true);
+              //
+              // TODO 401: reprovision and try again
+            }
+          }, 
+          function onerror(error) {
+            console.error('get creds failed: ' + error.toString());
           }
-        }
-        oReq.onload = reqListener;
+        );
 
-        var fullURL = creds.url + '/' + contactId + '.vcf';
-        oReq.open('PUT', fullURL, true, creds.username, creds.password);
-        oReq.setRequestHeader('Content-Type', 'text/vcard; charset=utf-8');
-        oReq.send(vcard);
       },
       function rejected(error) {
-        console.error("** awwww ... " + error.toString());
+        console.error('** awwww ... ' + error.toString());
       }
     );
   },
@@ -247,7 +240,7 @@ BackupService = {
       function resolve(result) {
         try {
           var vcard = new MozContactTranslator(result).toString();
-          console.log("** ok upload this: " + vcard);
+          console.log('** ok upload this: ' + vcard);
           self.upload(result.id, vcard);
         } catch(err) {
           console.error(err);
@@ -264,4 +257,6 @@ BackupService = {
 
 BackupService.init();
 
-}());
+exports.BackupService = BackupService;
+
+}(window));

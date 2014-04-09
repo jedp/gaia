@@ -60,7 +60,7 @@ suite('system/FxAccountsClient >', function() {
   suite('Init', function() {
     test('Integrity', function() {
       assert.isNotNull(FxAccountsClient);
-      assert.equal(Object.keys(FxAccountsClient).length, 6);
+      assert.equal(Object.keys(FxAccountsClient).length, 7);
     });
 
     test('No event listeners', function() {

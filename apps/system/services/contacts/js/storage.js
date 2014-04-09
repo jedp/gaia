@@ -17,13 +17,6 @@ var gdb = {};
 var STORE_NAME = 'settings';
 var CONTACTS_PROVIDERS = 'identity.services.contacts.providers';
 
-// Schema:
-// {fxa_id:    fxa id of currently signed-in user,
-//  url:       url of remote contacts backup service,
-//  username:  username for basic auth at service,
-//  password:  password for basic auth at service
-// }
-//
 // XXX maybe create an fxa dom api that encrypts/decrypts records using kB -
 // helper function so we don't store stuff in the clear
 
@@ -107,7 +100,6 @@ var CONTACTS_PROVIDERS = 'identity.services.contacts.providers';
 
           var cursor = event.target.result;
           results = cursor.value;
-          console.log("** load returning: " + JSON.stringify(results));
           onSuccess(results);
         };
         range.onerror = onError;
