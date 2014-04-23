@@ -69,7 +69,14 @@ FXATests.prototype = {
           }
         });
       },
-
+      'refresh': function() {
+        navigator.mozId.request({
+          oncancel: function() {
+            self.recordEvent('cancel', 'cancel'); 
+          },
+          refreshAuthentication: 5
+        });
+      },
       'logout': function() {
         navigator.mozId.logout();
       }
