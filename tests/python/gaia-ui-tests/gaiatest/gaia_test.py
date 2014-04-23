@@ -83,15 +83,11 @@ class GaiaApps(object):
 
     def kill(self, app):
         self.marionette.switch_to_frame()
-        js = os.path.abspath(os.path.join(__file__, os.path.pardir, 'atoms', "gaia_apps.js"))
-        self.marionette.import_script(js)
         result = self.marionette.execute_async_script("GaiaApps.kill('%s');" % app.origin)
         assert result, "Failed to kill app with name '%s'" % app.name
 
     def kill_all(self):
         self.marionette.switch_to_frame()
-        js = os.path.abspath(os.path.join(__file__, os.path.pardir, 'atoms', "gaia_apps.js"))
-        self.marionette.import_script(js)
         self.marionette.execute_async_script("GaiaApps.killAll()")
 
     @property
@@ -604,6 +600,11 @@ class Accessibility(object):
             'return Accessibility.isHidden.apply(Accessibility, arguments)',
             [element], special_powers=True)
 
+    def is_disabled(self, element):
+        return self.marionette.execute_async_script(
+            'return Accessibility.isDisabled.apply(Accessibility, arguments)',
+            [element], special_powers=True)
+
     def click(self, element):
         self.marionette.execute_async_script(
             'Accessibility.click.apply(Accessibility, arguments)',
@@ -632,7 +633,6 @@ class GaiaDevice(object):
         self.lockscreen_atom = os.path.abspath(
             os.path.join(__file__, os.path.pardir, 'atoms', "gaia_lock_screen.js"))
         self.marionette.import_script(self.lockscreen_atom)
-        self.update_checker.check_updates()
 
     def add_device_manager(self, device_manager):
         self._manager = device_manager
@@ -716,7 +716,7 @@ class GaiaDevice(object):
         self.marionette.start_session()
 
         # Wait for the AppWindowManager to have registered the frame as active (loaded)
-        locator = (By.CSS_SELECTOR, 'div.appWindow.active')
+        locator = (By.CSS_SELECTOR, 'div.appWindow.active.render')
         Wait(marionette=self.marionette, timeout=timeout, ignored_exceptions=NoSuchElementException)\
             .until(lambda m: m.find_element(*locator).is_displayed())
 
@@ -742,6 +742,22 @@ class GaiaDevice(object):
                 type: 'sleep-button-press'
               }
             }));""")
+
+    def press_release_volume_up_then_down_n_times(self, n_times):
+        self.marionette.execute_script("""
+            function sendEvent(aName, aType) {
+              window.wrappedJSObject.dispatchEvent(new CustomEvent('mozChromeEvent', {
+                detail: {
+                  type: aName + '-button-' + aType
+                }
+              }));
+            }
+            for (var i = 0; i < arguments[0]; ++i) {
+              sendEvent('volume-up', 'press');
+              sendEvent('volume-up', 'release');
+              sendEvent('volume-down', 'press');
+              sendEvent('volume-down', 'release');
+            };""", script_args=[n_times])
 
     def turn_screen_off(self):
         self.marionette.execute_script("window.wrappedJSObject.ScreenManager.turnScreenOff(true)")
@@ -793,6 +809,7 @@ class GaiaDevice(object):
         self.marionette.switch_to_frame()
         result = self.marionette.execute_async_script('GaiaLockScreen.lock()')
         assert result, 'Unable to lock screen'
+        Wait(self.marionette).until(lambda m: m.find_element(By.CSS_SELECTOR, 'div.lockScreenWindow.active'))
 
     def unlock(self):
         self.marionette.switch_to_frame()
@@ -846,8 +863,6 @@ class GaiaTestCase(MarionetteTestCase, B2GTestCaseMixin):
 
         self.apps = GaiaApps(self.marionette)
         self.data_layer = GaiaData(self.marionette, self.testvars)
-        from gaiatest.apps.keyboard.app import Keyboard
-        self.keyboard = Keyboard(self.marionette)
         self.accessibility = Accessibility(self.marionette)
 
         if self.device.is_android_build:
@@ -859,8 +874,14 @@ class GaiaTestCase(MarionetteTestCase, B2GTestCaseMixin):
             self.cleanup_gaia(full_reset=True)
 
     def cleanup_data(self):
-        self.device.manager.removeDir('/data/local/storage/persistent')
+        self.device.manager.removeDir('/cache/*')
         self.device.manager.removeDir('/data/b2g/mozilla')
+        self.device.manager.removeDir('/data/local/debug_info_trigger')
+        self.device.manager.removeDir('/data/local/indexedDB')
+        self.device.manager.removeDir('/data/local/OfflineCache')
+        self.device.manager.removeDir('/data/local/permissions.sqlite')
+        self.device.manager.removeDir('/data/local/storage/persistent')
+        self.device.manager.removeDir('/data/local/webapps')
 
     def cleanup_sdcard(self):
         for item in self.device.manager.listFiles('/sdcard/'):
@@ -889,6 +910,9 @@ class GaiaTestCase(MarionetteTestCase, B2GTestCaseMixin):
 
         # unlock
         self.device.unlock()
+
+        # kill any open apps
+        self.apps.kill_all()
 
         if full_reset:
             # disable passcode
@@ -929,9 +953,6 @@ class GaiaTestCase(MarionetteTestCase, B2GTestCaseMixin):
 
             # reset to home screen
             self.device.touch_home_button()
-
-        # kill any open apps
-        self.apps.kill_all()
 
         # disable sound completely
         self.data_layer.set_volume(0)

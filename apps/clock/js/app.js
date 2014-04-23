@@ -87,17 +87,14 @@ var App = {
    */
   navigate: function(data, callback) {
     var currentIndex = this.panels.indexOf(this.currentPanel);
-
     this.panels.forEach(function(panel, panelIndex) {
       if ('#' + panel.fragment === data.hash) {
         this.loadPanel(panel, function() {
           var instance = panel.instance;
-          if (typeof data.data !== 'undefined') {
-            instance.navData = data.data;
-          }
+          instance.navData = data.data || null;
           instance.active = true;
           instance.visible = true;
-          if (currentIndex !== -1) {
+          if (currentIndex !== -1 && currentIndex !== panelIndex) {
             var direction = currentIndex < panelIndex;
             rAF(function startAnimation(oldPanel) {
               instance.transition =

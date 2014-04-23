@@ -17,7 +17,22 @@
           </label>
         </li>
       </ul>
-      <ul id="hud-widgets" class="disabled">
+      <ul class="hud-widgets disabled">
+        <li>
+          <label class="pack-checkbox">
+            <input type="checkbox" name="hud.logging">
+            <span data-l10n-id="hud-logging">Log changes in adb</span>
+          </label>
+        </li>
+        <header>
+          <h2 data-l10n-id="hud-problems">Problems</h2>
+        </header>
+        <li>
+          <label class="pack-checkbox">
+            <input type="checkbox" name="hud.warnings">
+            <span class="color-preview warning-counter" data-l10n-id="hud-warnings">Warnings</span>
+          </label>
+        </li>
         <li>
           <label class="pack-checkbox">
             <input type="checkbox" name="hud.errors">
@@ -26,8 +41,8 @@
         </li>
         <li>
           <label class="pack-checkbox">
-            <input type="checkbox" name="hud.warnings">
-            <span class="color-preview warning-counter" data-l10n-id="hud-warnings">Warnings</span>
+            <input type="checkbox" name="hud.security">
+            <span class="color-preview security-counter" data-l10n-id="hud-security">Security issues</span>
           </label>
         </li>
         <header>
@@ -56,6 +71,8 @@
             </select>
           </span>
         </li>
+      </ul>
+      <ul>
         <li>
           <label class="pack-checkbox">
             <input type="checkbox" name="debug.fps.enabled">
@@ -68,6 +85,8 @@
             <span class="color-preview ttl-monitor" data-l10n-id="hud-ttl">Time to load</span>
           </label>
         </li>
+      </ul>
+      <ul class="hud-widgets disabled">
         <header>
           <h2 data-l10n-id="hud-memory">Memory</h2>
         </header>

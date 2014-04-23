@@ -1,6 +1,8 @@
 /* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- /
 /* vim: set shiftwidth=2 tabstop=2 autoindent cindent expandtab: */
 
+/* global FxaModuleUI */
+
 'use strict';
 
 /*
@@ -40,11 +42,13 @@ var FxaModuleManager = {
     window.parent.FxAccountsUI.done(FxaModuleManager.paramsRetrieved);
   },
   close: function fxamm_close(error) {
-    if (!this.paramsRetrieved || !this.paramsRetrieved.success) {
+    // If there is no params retrieved, or the flow is not complete ()
+    if (!this.paramsRetrieved ||
+        !this.paramsRetrieved.done) {
       window.parent.FxAccountsUI.error(error);
-    } else {
-      window.parent.FxAccountsUI.done(this.paramsRetrieved);
+      return;
     }
+    window.parent.FxAccountsUI.done(this.paramsRetrieved);
   }
 };
 

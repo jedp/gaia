@@ -80,7 +80,7 @@ var AlarmManager = {
       var endCb = generator();
       for (var i = 0; i < e.target.result.length && !hasAlarmEnabled; i++) {
         var data = e.target.result[i].data;
-        if (!data.id || ['alarm', 'snooze'].indexOf(data.type) === -1) {
+        if (!data.id || ['normal', 'snooze'].indexOf(data.type) === -1) {
           return;
         }
         AlarmsDB.getAlarm(data.id,
@@ -102,10 +102,6 @@ var AlarmManager = {
     request.onerror = function(e) {
       console.error('get all alarm fail');
     };
-  },
-
-  regUpdateAlarmEnableState: function am_regUpdateAlarmEnableState(handler) {
-    this._updateAlarmEableStateHandler = handler;
   }
 
 };

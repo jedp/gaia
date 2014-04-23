@@ -2,7 +2,6 @@ define(function(require) {
   'use strict';
 
   var Panel = require('panel');
-  var View = require('view');
   var Stopwatch = require('stopwatch');
   var Utils = require('utils');
   var Template = require('template');
@@ -10,6 +9,11 @@ define(function(require) {
   var html = require('text!panels/stopwatch/panel.html');
   var lapHtml = require('text!panels/stopwatch/list_item.html');
   var priv = new WeakMap();
+
+  // This value is chosen such that the only reason you'll hit it is
+  // because you're super bored, and small enough that phones won't
+  // puke when displaying this many rows in the lap list.
+  var MAX_STOPWATCH_LAPS = 1000;
 
   /**
    * Stopwatch.Panel
@@ -27,6 +31,8 @@ define(function(require) {
     this.interval = null;
     this.screenWakeLock = null;
 
+    // Store maxLaps as a dataset attribute for easy access in tests.
+    this.element.dataset.maxLaps = MAX_STOPWATCH_LAPS;
     this.element.innerHTML = html;
     // Gather elements
     [
@@ -54,10 +60,10 @@ define(function(require) {
       e.addEventListener('click', this);
     }, this);
 
-    View.instance(element).on(
-      'visibilitychange',
-      this.onvisibilitychange.bind(this)
-    );
+    element.addEventListener(
+      'panel-visibilitychange', this.onvisibilitychange.bind(this));
+
+    mozL10n.translate(this.element);
 
     this.setStopwatch(new Stopwatch());
 
@@ -65,11 +71,13 @@ define(function(require) {
 
   Stopwatch.Panel.prototype = Object.create(Panel.prototype);
 
+
   Stopwatch.Panel.prototype.update = function() {
     var swp = priv.get(this);
     var e = swp.stopwatch.getElapsedTime();
     var time = Utils.format.durationMs(e);
     this.nodes.time.textContent = time;
+    this.nodes.time.classList.toggle('over-100-minutes', e >= 1000 * 60 * 100);
     this.activeLap(false);
   };
 
@@ -119,22 +127,25 @@ define(function(require) {
     this.checkLapButton();
   };
 
-  Stopwatch.Panel.prototype.onvisibilitychange = function(isVisible) {
+  Stopwatch.Panel.prototype.onvisibilitychange = function(evt) {
     var stopwatch = priv.get(this).stopwatch;
-    if (isVisible) {
+    if (evt.detail.isVisible) {
       this.setState(stopwatch.getState());
     }
   };
 
   Stopwatch.Panel.prototype.checkLapButton = function() {
     var swp = priv.get(this);
-    if (swp.stopwatch.getLaps().length >=
-        99 /* ensure that this matches the value in
-              apps/clock/js/stopwatch.js#lap */) {
-      this.nodes.lap.setAttribute('disabled', 'true');
-    } else {
-      this.nodes.lap.removeAttribute('disabled');
-    }
+    var maxLaps = parseInt(this.element.dataset.maxLaps, 10);
+    // As the Stopwatch doesn't include the current "lap", we must
+    // subtract one from maxLaps when deciding whether or not we can
+    // add a lap. Using these calculations, if maxLaps is 10, the last
+    // lap visible in the UI will be "Lap 10". Additionally, this
+    // button can only be shown if the "pause" button is also visible,
+    // as it must respect the state of the other buttons.
+    var canAddLaps = (swp.stopwatch.getLaps().length < maxLaps - 1) &&
+          !this.nodes.pause.classList.contains('hidden');
+    this.nodes.lap.classList.toggle('hidden', !canAddLaps);
   };
 
   Stopwatch.Panel.prototype.handleEvent = function(event) {
