@@ -12,6 +12,7 @@ dev_apps/membuster
 dev_apps/music2
 dev_apps/test-ime
 dev_apps/share-receiver
+dev_apps/sync-thing
 dev_apps/template
 dev_apps/test-agent
 dev_apps/test-container

@@ -1,0 +1,13 @@
+{
+  "name": "Background Sync Test",
+  "description": "https://bugzilla.mozilla.org/show_bug.cgi?id=1019785",
+  "launch_path": "/index.html",
+  "developer": {
+    "name": "Aulus Gellius",
+    "url": "https://github.com/jedp/gaia"
+  },
+  "default_locale": "en-US",
+  "icons": {
+    "128": "/style/icons/Blank.png"
+  }
+}
