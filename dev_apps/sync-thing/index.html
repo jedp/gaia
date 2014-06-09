@@ -14,6 +14,7 @@
         overflow: hidden;
       }
     </style>
+    <script src="js/syncthing.js"></script>
   </head>
 
   <body>
@@ -22,20 +23,7 @@
 
   <button id='sync'>Do eeeeeet!!!</button>
 
-  <script>
-    var syncNowButton = document.getElementById('sync');
-
-    // toolkit/modules/SyncScheduler.jsm will emit a 'sync' system
-    // message when it's time for us to sync.
-    navigator.mozSetMessageHandler('sync', function() {
-      dump("** sync-thing received 'sync' message\n");
-    });
-
-    syncNowButton.onclick = function() {
-      dump("** sync-thing requesting sync\n");
-      navigator.syncService.requestSync("ohai");
-    };
-  <script>
+  <p id='feedback'></p>
 
   </body>
 
